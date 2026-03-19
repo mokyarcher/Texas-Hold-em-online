@@ -563,12 +563,12 @@
             color: rgba(255,255,255,0.5);
         }
 
-        /* 个人信息弹窗样式 */
+        /* 个人信息弹窗样式 - 横屏左右分栏 */
         .profile-modal-content {
             background: linear-gradient(145deg, rgba(30,30,30,0.98), rgba(10,10,10,0.99));
             padding: 30px;
             border-radius: 12px;
-            width: 450px;
+            width: 700px;
             max-width: 95%;
             border: 1px solid rgba(255,255,255,0.1);
         }
@@ -580,26 +580,49 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 15px;
         }
 
-        .profile-section {
-            margin-bottom: 25px;
-            padding: 20px;
+        .profile-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        .profile-left, .profile-right {
             background: rgba(255,255,255,0.03);
-            border-radius: 8px;
+            border-radius: 10px;
+            padding: 20px;
         }
 
         .profile-section-title {
             font-size: 1rem;
             color: #ffd700;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin: 0 auto 20px;
         }
 
         .profile-info-item {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
+            align-items: center;
+            padding: 12px 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
@@ -609,11 +632,17 @@
 
         .profile-info-label {
             color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
         }
 
         .profile-info-value {
             color: white;
             font-weight: 500;
+        }
+
+        .profile-info-value.chips {
+            color: #ffd700;
+            font-size: 1.1rem;
         }
 
         .profile-form {
@@ -625,12 +654,12 @@
         .profile-input-group {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .profile-input-group label {
             color: rgba(255,255,255,0.8);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
 
         .profile-input-group input {
@@ -639,7 +668,7 @@
             border: 1px solid rgba(255,255,255,0.2);
             border-radius: 6px;
             color: white;
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
 
         .profile-input-group input:focus {
@@ -647,20 +676,20 @@
             border-color: #3498db;
         }
 
-        .profile-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
+        .profile-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.1);
+            margin: 20px 0;
         }
 
         .btn-profile-action {
-            flex: 1;
-            padding: 10px;
+            padding: 10px 20px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             transition: all 0.3s;
+            font-weight: 500;
         }
 
         .btn-save {
@@ -672,20 +701,11 @@
             background: #2ecc71;
         }
 
-        .btn-cancel-profile {
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-
-        .btn-cancel-profile:hover {
-            background: rgba(255,255,255,0.2);
-        }
-
         .profile-message {
-            padding: 10px;
+            padding: 8px 12px;
             border-radius: 6px;
             margin-top: 10px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             display: none;
         }
 
@@ -699,6 +719,12 @@
             background: rgba(231, 76, 60, 0.2);
             color: #e74c3c;
             border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .profile-body {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -849,59 +875,59 @@
                 <button class="btn-close" onclick="hideProfileModal()">关闭</button>
             </div>
             
-            <!-- 基本信息 -->
-            <div class="profile-section">
-                <div class="profile-section-title">📋 基本信息</div>
-                <div class="profile-info-item">
-                    <span class="profile-info-label">用户名</span>
-                    <span class="profile-info-value" id="profileUsername">-</span>
-                </div>
-                <div class="profile-info-item">
-                    <span class="profile-info-label">昵称</span>
-                    <span class="profile-info-value" id="profileNickname">-</span>
-                </div>
-                <div class="profile-info-item">
-                    <span class="profile-info-label">当前筹码</span>
-                    <span class="profile-info-value" style="color: #ffd700;">💰 <span id="profileChips">0</span></span>
-                </div>
-            </div>
-
-            <!-- 修改昵称 -->
-            <div class="profile-section">
-                <div class="profile-section-title">✏️ 修改昵称</div>
-                <div class="profile-form">
-                    <div class="profile-input-group">
-                        <label>新昵称</label>
-                        <input type="text" id="newNickname" placeholder="输入新昵称" maxlength="20">
+            <div class="profile-body">
+                <!-- 左侧：信息显示 -->
+                <div class="profile-left">
+                    <div class="profile-section-title">📋 我的信息</div>
+                    <div class="profile-avatar">👤</div>
+                    <div class="profile-info-item">
+                        <span class="profile-info-label">用户名</span>
+                        <span class="profile-info-value" id="profileUsername">加载中...</span>
                     </div>
-                    <div class="profile-actions">
+                    <div class="profile-info-item">
+                        <span class="profile-info-label">昵称</span>
+                        <span class="profile-info-value" id="profileNickname">加载中...</span>
+                    </div>
+                    <div class="profile-info-item">
+                        <span class="profile-info-label">当前筹码</span>
+                        <span class="profile-info-value chips">💰 <span id="profileChips">0</span></span>
+                    </div>
+                </div>
+
+                <!-- 右侧：修改功能 -->
+                <div class="profile-right">
+                    <!-- 修改昵称 -->
+                    <div class="profile-section-title">✏️ 修改昵称</div>
+                    <div class="profile-form">
+                        <div class="profile-input-group">
+                            <label>新昵称</label>
+                            <input type="text" id="newNickname" placeholder="输入新昵称" maxlength="20">
+                        </div>
                         <button class="btn-profile-action btn-save" onclick="updateNickname()">保存昵称</button>
+                        <div class="profile-message" id="nicknameMessage"></div>
                     </div>
-                </div>
-                <div class="profile-message" id="nicknameMessage"></div>
-            </div>
 
-            <!-- 修改密码 -->
-            <div class="profile-section">
-                <div class="profile-section-title">🔒 修改密码</div>
-                <div class="profile-form">
-                    <div class="profile-input-group">
-                        <label>当前密码</label>
-                        <input type="password" id="currentPassword" placeholder="输入当前密码">
-                    </div>
-                    <div class="profile-input-group">
-                        <label>新密码</label>
-                        <input type="password" id="newPassword" placeholder="输入新密码（至少6位）">
-                    </div>
-                    <div class="profile-input-group">
-                        <label>确认新密码</label>
-                        <input type="password" id="confirmPassword" placeholder="再次输入新密码">
-                    </div>
-                    <div class="profile-actions">
+                    <div class="profile-divider"></div>
+
+                    <!-- 修改密码 -->
+                    <div class="profile-section-title">🔒 修改密码</div>
+                    <div class="profile-form">
+                        <div class="profile-input-group">
+                            <label>当前密码</label>
+                            <input type="password" id="currentPassword" placeholder="输入当前密码">
+                        </div>
+                        <div class="profile-input-group">
+                            <label>新密码</label>
+                            <input type="password" id="newPassword" placeholder="至少6位">
+                        </div>
+                        <div class="profile-input-group">
+                            <label>确认密码</label>
+                            <input type="password" id="confirmPassword" placeholder="再次输入">
+                        </div>
                         <button class="btn-profile-action btn-save" onclick="updatePassword()">修改密码</button>
+                        <div class="profile-message" id="passwordMessage"></div>
                     </div>
                 </div>
-                <div class="profile-message" id="passwordMessage"></div>
             </div>
         </div>
     </div>
@@ -1187,8 +1213,18 @@
         
         // 显示个人信息弹窗
         function showProfileModal() {
+            // 先从本地存储加载数据（立即显示）
+            const localUser = JSON.parse(localStorage.getItem('poker_user') || '{}');
+            document.getElementById('profileUsername').textContent = localUser.username || '-';
+            document.getElementById('profileNickname').textContent = localUser.nickname || localUser.username || '-';
+            document.getElementById('profileChips').textContent = localUser.chips || 0;
+            
+            // 显示弹窗
             document.getElementById('profileModal').classList.add('show');
+            
+            // 然后从服务器获取最新数据
             loadProfileInfo();
+            
             // 清空输入框和消息
             document.getElementById('newNickname').value = '';
             document.getElementById('currentPassword').value = '';
