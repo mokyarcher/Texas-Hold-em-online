@@ -1,5 +1,6 @@
 const { roomDB, roomPlayerDB, userDB } = require('../db/database');
 const HandEvaluator = require('../utils/HandEvaluator');
+const BotAI = require('../utils/BotAI');
 
 // 存储进行中的游戏状态
 const activeGames = new Map();
@@ -8,6 +9,8 @@ const socketMap = new Map();
 // 存储在线用户集合 (userId -> { socketId, status, roomId, gameRoomId, lastActive })
 // status: 'online' | 'in_room' | 'in_game'
 const onlineUsers = new Map();
+// 人机AI实例
+const botAI = new BotAI();
 
 // 获取在线用户列表（导出供其他模块使用）
 function getOnlineUsers() {
@@ -47,7 +50,8 @@ class GameState {
       chips: p.chips || 1000,
       socketId: null,  // 将在连接时设置
       disconnectedAt: null, // 掉线时间
-      disconnected: false // 是否掉线
+      disconnected: false, // 是否掉线
+      isBot: p.is_bot === 1 // 标记是否为人机
     }));
     this.communityCards = [];
     this.pot = 0;
@@ -123,7 +127,8 @@ class GameState {
         return i;
       }
     }
-    return -1;
+    // 如果没有活跃玩家，返回0（避免-1错误）
+    return 0;
   }
 
   toJSON() {
@@ -136,7 +141,8 @@ class GameState {
         chips: p.chips,
         currentBet: p.currentBet,
         folded: p.folded,
-        allIn: p.allIn
+        allIn: p.allIn,
+        isBot: p.isBot
       })),
       communityCards: this.communityCards,
       pot: this.pot,
@@ -307,10 +313,18 @@ function initSocketHandlers(io) {
       // 获取玩家详细信息（包括筹码）
       const players = [];
       for (const p of dbPlayers) {
-        const user = await userDB.findById(p.user_id);
+        let chips = 1000;
+        if (p.is_bot === 1) {
+          // 人机使用默认筹码
+          chips = 20000;
+        } else {
+          // 真实玩家从数据库获取筹码
+          const user = await userDB.findById(p.user_id);
+          chips = user ? user.chips : 1000;
+        }
         players.push({
           ...p,
-          chips: user ? user.chips : 1000
+          chips: chips
         });
       }
       
@@ -377,6 +391,9 @@ function initSocketHandlers(io) {
 
       // 广播公开状态
       io.to(roomId).emit('public_state', game.toJSON());
+
+      // 检查第一个玩家是否是人机
+      handleBotTurn(io, roomId, game);
     });
 
     // 玩家行动
@@ -404,74 +421,8 @@ function initSocketHandlers(io) {
         return;
       }
 
-      const player = game.players[playerIndex];
-
-      switch (action) {
-        case 'fold':
-          player.folded = true;
-          break;
-        case 'check':
-          if (player.currentBet !== game.currentBet) {
-            socket.emit('error', { message: '不能过牌，需要跟注' });
-            return;
-          }
-          break;
-        case 'call':
-          const callAmount = Math.min(game.currentBet - player.currentBet, player.chips);
-          player.chips -= callAmount;
-          player.currentBet += callAmount;
-          game.pot += callAmount;
-          if (player.chips === 0) player.allIn = true;
-          break;
-        case 'raise':
-          const raiseTotal = Math.min(amount, player.chips + player.currentBet);
-          const actualRaise = raiseTotal - player.currentBet;
-          if (actualRaise <= 0) {
-            socket.emit('error', { message: '加注金额无效' });
-            return;
-          }
-          player.chips -= actualRaise;
-          player.currentBet = raiseTotal;
-          game.pot += actualRaise;
-          if (player.currentBet > game.currentBet) {
-            game.lastRaise = player.currentBet - game.currentBet;
-            game.currentBet = player.currentBet;
-          }
-          game.roundBets++;
-          if (player.chips === 0) player.allIn = true;
-          break;
-        case 'allin':
-          const allInAmount = player.chips;
-          player.chips = 0;
-          player.currentBet += allInAmount;
-          game.pot += allInAmount;
-          if (player.currentBet > game.currentBet) {
-            game.currentBet = player.currentBet;
-          }
-          player.allIn = true;
-          break;
-        default:
-          socket.emit('error', { message: '无效的行动' });
-          return;
-      }
-
-      // 广播行动
-      io.to(roomId).emit('action_broadcast', {
-        playerId: userId,
-        username: player.username,
-        action,
-        amount: action === 'raise' ? amount : (action === 'call' ? game.currentBet - player.currentBet : 0),
-        currentPot: game.pot
-      });
-
-      // 检查是否进入下一轮
-      if (shouldAdvanceRound(game)) {
-        advanceRound(io, roomId, game);
-      } else {
-        // 下一个玩家
-        game.currentPlayer = game.findNextActivePlayer(game.currentPlayer);
-        broadcastGameState(io, roomId, game);
-      }
+      // 执行玩家行动
+      executePlayerAction(io, roomId, game, playerIndex, action, amount);
     });
 
     // 离开房间
@@ -686,6 +637,9 @@ function advanceRound(io, roomId, game) {
   });
 
   broadcastGameState(io, roomId, game);
+
+  // 检查第一个玩家是否是人机
+  handleBotTurn(io, roomId, game);
 }
 
 function showdown(io, roomId, game) {
@@ -731,9 +685,11 @@ async function endGame(io, roomId, game, winner, isTie = false, bestHand = null)
     p.disconnectedAt = null;
   });
   
-  // 更新数据库中的用户筹码
+  // 更新数据库中的用户筹码（只更新真实玩家）
   for (const p of game.players) {
-    await userDB.updateChips(p.userId, p.chips);
+    if (!p.isBot) {
+      await userDB.updateChips(p.userId, p.chips);
+    }
   }
   
   // 检查哪些玩家筹码不足（小于100，无法参加下一局）
@@ -743,12 +699,16 @@ async function endGame(io, roomId, game, winner, isTie = false, bestHand = null)
   for (const p of game.players) {
     if (p.chips < 100) {
       eliminatedPlayers.push(p);
-      // 从房间中移除筹码不足的玩家
-      await roomPlayerDB.leaveRoom(roomId, p.userId);
+      // 从房间中移除筹码不足的玩家（只移除真实玩家）
+      if (!p.isBot) {
+        await roomPlayerDB.leaveRoom(roomId, p.userId);
+      }
     } else {
       continuePlayers.push(p);
-      // 重置准备状态
-      await roomPlayerDB.setReady(roomId, p.userId, 0);
+      // 重置准备状态（只重置真实玩家）
+      if (!p.isBot) {
+        await roomPlayerDB.setReady(roomId, p.userId, 0);
+      }
     }
   }
   
@@ -779,10 +739,17 @@ async function endGame(io, roomId, game, winner, isTie = false, bestHand = null)
   // 获取当前房间人数
   const playerCount = await roomPlayerDB.getPlayerCount(roomId);
   
+  // 计算真实玩家数量（不包括人机）
+  const realPlayerCount = game.players.filter(p => !p.isBot).length;
+  
   if (playerCount === 0) {
     // 所有人都被淘汰，删除房间
     await roomDB.deleteRoom(roomId);
     console.log(`Room ${roomId} deleted - all players eliminated`);
+  } else if (realPlayerCount === 0) {
+    // 只剩人机，删除房间
+    await roomDB.deleteRoom(roomId);
+    console.log(`Room ${roomId} deleted - only bots left`);
   } else if (playerCount === 1) {
     // 只剩一个人，重置为等待状态（等待新人加入）
     await roomDB.updateRoomStatus(roomId, 'waiting');
@@ -879,6 +846,8 @@ function handleDisconnectTimeout(io, roomId, game, playerIndex) {
 }
 
 function broadcastGameState(io, roomId, game) {
+  console.log(`[Broadcast] Room ${roomId}, Round ${game.currentRound}, CurrentPlayer: ${game.currentPlayer}, Players: ${game.players.length}`);
+  
   // 给每个在线玩家发送包含自己手牌的私有状态
   game.players.forEach(p => {
     if (p.socketId) {
@@ -886,6 +855,7 @@ function broadcastGameState(io, roomId, game) {
         const playerSocket = io.sockets.sockets.get(p.socketId);
         if (playerSocket && playerSocket.connected) {
           playerSocket.emit('game_state', game.toPrivateJSON(p.userId));
+          console.log(`[Broadcast] Sent state to player ${p.username} (userId: ${p.userId}, isBot: ${p.isBot})`);
         } else {
           // Socket不可用，清空该玩家的socketId
           p.socketId = null;
@@ -901,8 +871,127 @@ function broadcastGameState(io, roomId, game) {
   // 广播公开状态给所有人（包括观战者）
   try {
     io.to(roomId).emit('public_state', game.toJSON());
+    console.log(`[Broadcast] Sent public state to room ${roomId}`);
   } catch (error) {
     console.error('Error broadcasting public state:', error);
+  }
+}
+
+// 处理人机行动
+function handleBotTurn(io, roomId, game) {
+  const currentPlayer = game.players[game.currentPlayer];
+  
+  if (!currentPlayer.isBot) return;
+  
+  console.log(`Bot ${currentPlayer.username} is taking action...`);
+  
+  // 延迟1-3秒模拟思考时间
+  const thinkTime = 1000 + Math.random() * 2000;
+  
+  setTimeout(() => {
+    if (!activeGames.has(roomId) || game.status !== 'playing') return;
+    if (game.currentPlayer !== game.players.findIndex(p => p.userId === currentPlayer.userId)) return;
+    
+    const playerIndex = game.findPlayerByUserId(currentPlayer.userId);
+    if (playerIndex < 0) return;
+    
+    const player = game.players[playerIndex];
+    const decision = botAI.decideAction(game, playerIndex);
+    
+    console.log(`Bot ${player.username} decided: ${decision.action}${decision.amount ? ` ${decision.amount}` : ''}`);
+    
+    // 执行人机的行动
+    executePlayerAction(io, roomId, game, playerIndex, decision.action, decision.amount);
+  }, thinkTime);
+}
+
+// 执行玩家行动（包括人机）
+function executePlayerAction(io, roomId, game, playerIndex, action, amount = 0) {
+  const player = game.players[playerIndex];
+  
+  switch (action) {
+    case 'fold':
+      player.folded = true;
+      break;
+    case 'check':
+      if (player.currentBet !== game.currentBet) {
+        const errorMsg = `Player ${player.username} tried to check but needs to call`;
+        console.error(errorMsg);
+        if (!player.isBot) {
+          const socket = io.sockets.sockets.get(player.socketId);
+          if (socket) socket.emit('error', { message: '不能过牌，需要跟注' });
+        }
+        return;
+      }
+      break;
+    case 'call':
+      const callAmount = Math.min(game.currentBet - player.currentBet, player.chips);
+      player.chips -= callAmount;
+      player.currentBet += callAmount;
+      game.pot += callAmount;
+      if (player.chips === 0) player.allIn = true;
+      break;
+    case 'raise':
+      const raiseTotal = Math.min(amount, player.chips + player.currentBet);
+      const actualRaise = raiseTotal - player.currentBet;
+      if (actualRaise <= 0) {
+        const errorMsg = `Player ${player.username} tried invalid raise`;
+        console.error(errorMsg);
+        if (!player.isBot) {
+          const socket = io.sockets.sockets.get(player.socketId);
+          if (socket) socket.emit('error', { message: '加注金额无效' });
+        }
+        return;
+      }
+      player.chips -= actualRaise;
+      player.currentBet = raiseTotal;
+      game.pot += actualRaise;
+      if (player.currentBet > game.currentBet) {
+        game.lastRaise = player.currentBet - game.currentBet;
+        game.currentBet = player.currentBet;
+      }
+      game.roundBets++;
+      if (player.chips === 0) player.allIn = true;
+      break;
+    case 'allin':
+      const allInAmount = player.chips;
+      player.chips = 0;
+      player.currentBet += allInAmount;
+      game.pot += allInAmount;
+      if (player.currentBet > game.currentBet) {
+        game.currentBet = player.currentBet;
+      }
+      player.allIn = true;
+      break;
+    default:
+      const errorMsg = `Player ${player.username} made invalid action: ${action}`;
+      console.error(errorMsg);
+      if (!player.isBot) {
+        const socket = io.sockets.sockets.get(player.socketId);
+        if (socket) socket.emit('error', { message: '无效的行动' });
+      }
+      return;
+  }
+
+  // 广播行动
+  io.to(roomId).emit('action_broadcast', {
+    playerId: player.userId,
+    username: player.username,
+    action,
+    amount: action === 'raise' ? amount : (action === 'call' ? game.currentBet - player.currentBet : 0),
+    currentPot: game.pot
+  });
+
+  // 检查是否进入下一轮
+  if (shouldAdvanceRound(game)) {
+    advanceRound(io, roomId, game);
+  } else {
+    // 下一个玩家
+    game.currentPlayer = game.findNextActivePlayer(game.currentPlayer);
+    broadcastGameState(io, roomId, game);
+    
+    // 检查下一个玩家是否是人机
+    handleBotTurn(io, roomId, game);
   }
 }
 

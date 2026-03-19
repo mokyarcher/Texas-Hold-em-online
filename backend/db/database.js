@@ -55,6 +55,9 @@ function initDatabase() {
       user_id INTEGER NOT NULL,
       seat_number INTEGER,
       is_ready INTEGER DEFAULT 0,
+      is_bot INTEGER DEFAULT 0,
+      bot_name TEXT,
+      bot_avatar TEXT DEFAULT 'avatar1.png',
       joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (room_id, user_id)
     )
@@ -267,11 +270,24 @@ const roomPlayerDB = {
   // 获取房间内的所有玩家
   async getRoomPlayers(roomId) {
     return dbAll(`
-      SELECT rp.*, u.username, u.nickname, u.chips
+      SELECT 
+        rp.*,
+        CASE 
+          WHEN rp.is_bot = 1 THEN rp.bot_name 
+          ELSE u.username 
+        END as username,
+        CASE 
+          WHEN rp.is_bot = 1 THEN rp.bot_name 
+          ELSE u.nickname 
+        END as nickname,
+        CASE 
+          WHEN rp.is_bot = 1 THEN 20000 
+          ELSE u.chips 
+        END as chips
       FROM room_players rp
-      JOIN users u ON rp.user_id = u.id
+      LEFT JOIN users u ON rp.user_id = u.id AND rp.is_bot = 0
       WHERE rp.room_id = ?
-      ORDER BY rp.joined_at
+      ORDER BY rp.seat_number
     `, [roomId]);
   },
 
@@ -295,6 +311,33 @@ const roomPlayerDB = {
   // 删除房间的所有玩家
   async clearRoomPlayers(roomId) {
     return dbRun('DELETE FROM room_players WHERE room_id = ?', [roomId]);
+  },
+
+  // 添加人机到房间
+  async addBot(roomId, botName, botAvatar, seatNumber) {
+    // 使用负数作为人机的user_id，避免与真实用户冲突
+    const botUserId = -Math.floor(Math.random() * 1000000);
+    return dbRun(
+      'INSERT INTO room_players (room_id, user_id, seat_number, is_ready, is_bot, bot_name, bot_avatar) VALUES (?, ?, ?, 1, 1, ?, ?)',
+      [roomId, botUserId, seatNumber, botName, botAvatar]
+    );
+  },
+
+  // 移除人机
+  async removeBot(roomId, seatNumber) {
+    return dbRun(
+      'DELETE FROM room_players WHERE room_id = ? AND seat_number = ? AND is_bot = 1',
+      [roomId, seatNumber]
+    );
+  },
+
+  // 获取房间内的人机
+  async getRoomBots(roomId) {
+    return dbAll(`
+      SELECT * FROM room_players
+      WHERE room_id = ? AND is_bot = 1
+      ORDER BY seat_number
+    `, [roomId]);
   }
 };
 

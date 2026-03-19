@@ -365,13 +365,20 @@ router.post('/:roomId/start', async (req, res) => {
 
     const players = await roomPlayerDB.getRoomPlayers(roomId);
     
-    // 检查人数
+    // 检查人数（真实玩家 + 人机）
+    const realPlayers = players.filter(p => !p.is_bot);
+    const botPlayers = players.filter(p => p.is_bot);
+    
     if (players.length < 2) {
-      return res.status(400).json({ error: '至少需要2名玩家' });
+      return res.status(400).json({ error: '至少需要2名玩家（包括人机）' });
+    }
+    
+    if (realPlayers.length < 1) {
+      return res.status(400).json({ error: '至少需要1名真实玩家' });
     }
 
-    // 检查是否所有人都准备了（除了房主）
-    const notReadyPlayers = players.filter(p => p.user_id !== room.host_id && !p.is_ready);
+    // 检查是否所有真实玩家都准备了（除了房主）
+    const notReadyPlayers = realPlayers.filter(p => p.user_id !== room.host_id && !p.is_ready);
     if (notReadyPlayers.length > 0) {
       return res.status(400).json({ 
         error: '还有玩家未准备',
@@ -389,6 +396,136 @@ router.post('/:roomId/start', async (req, res) => {
     });
   } catch (error) {
     console.error('Start game error:', error);
+    res.status(500).json({ error: '服务器错误' });
+  }
+});
+
+// 添加人机（仅房主）
+router.post('/:roomId/add-bot', async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { roomId } = req.params;
+    const { botName, botAvatar, seatNumber } = req.body;
+
+    const room = await roomDB.getRoomById(roomId);
+    if (!room) {
+      return res.status(404).json({ error: '房间不存在' });
+    }
+
+    // 检查是否是房主
+    if (room.host_id !== userId) {
+      return res.status(403).json({ error: '只有房主可以添加人机' });
+    }
+
+    // 检查房间状态
+    if (room.status !== 'waiting') {
+      return res.status(400).json({ error: '游戏已开始，无法添加人机' });
+    }
+
+    // 检查座位号是否有效
+    if (seatNumber < 0 || seatNumber >= room.max_players) {
+      return res.status(400).json({ error: '座位号无效' });
+    }
+
+    // 检查座位是否已被占用
+    const players = await roomPlayerDB.getRoomPlayers(roomId);
+    if (players.find(p => p.seat_number === seatNumber)) {
+      return res.status(400).json({ error: '该座位已被占用' });
+    }
+
+    // 随机生成人机名称
+    const botNames = ['小明', '小红', '小刚', '小丽', '小强', '小芳', '小华', '小军', '小梅', '小伟', '小燕', '小东', '小兰', '小波', '小雪'];
+    const finalBotName = botName || botNames[Math.floor(Math.random() * botNames.length)];
+    
+    // 随机生成头像
+    const avatars = ['avatar1.png', 'avatar2.png', 'avatar3.png', 'avatar4.png', 'avatar5.png', 
+                     'avatar6.png', 'avatar7.png', 'avatar8.png', 'avatar9.png', 'avatar10.png',
+                     'avatar11.png', 'avatar12.png', 'avatar13.png', 'avatar14.png', 'avatar15.png',
+                     'avatar16.png', 'avatar17.png', 'avatar18.png', 'avatar19.png', 'avatar20.png'];
+    const finalBotAvatar = botAvatar || avatars[Math.floor(Math.random() * avatars.length)];
+
+    // 添加人机
+    await roomPlayerDB.addBot(roomId, finalBotName, finalBotAvatar, seatNumber);
+
+    // 获取更新后的玩家列表
+    const updatedPlayers = await roomPlayerDB.getRoomPlayers(roomId);
+
+    // 广播人机添加
+    const io = req.app.get('io');
+    if (io) {
+      io.to(roomId).emit('bot_added', {
+        botName: finalBotName,
+        seatNumber: seatNumber,
+        players: updatedPlayers
+      });
+    }
+
+    res.json({
+      message: '人机添加成功',
+      botName: finalBotName,
+      seatNumber: seatNumber,
+      players: updatedPlayers
+    });
+  } catch (error) {
+    console.error('Add bot error:', error);
+    res.status(500).json({ error: '服务器错误' });
+  }
+});
+
+// 移除人机（仅房主）
+router.post('/:roomId/remove-bot', async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { roomId } = req.params;
+    const { seatNumber } = req.body;
+
+    const room = await roomDB.getRoomById(roomId);
+    if (!room) {
+      return res.status(404).json({ error: '房间不存在' });
+    }
+
+    // 检查是否是房主
+    if (room.host_id !== userId) {
+      return res.status(403).json({ error: '只有房主可以移除人机' });
+    }
+
+    // 检查房间状态
+    if (room.status !== 'waiting') {
+      return res.status(400).json({ error: '游戏已开始，无法移除人机' });
+    }
+
+    // 检查该座位是否是人机
+    const players = await roomPlayerDB.getRoomPlayers(roomId);
+    const bot = players.find(p => p.seat_number === seatNumber);
+    if (!bot) {
+      return res.status(404).json({ error: '该座位没有玩家' });
+    }
+    if (!bot.is_bot) {
+      return res.status(400).json({ error: '该座位不是人机，无法移除' });
+    }
+
+    // 移除人机
+    await roomPlayerDB.removeBot(roomId, seatNumber);
+
+    // 获取更新后的玩家列表
+    const updatedPlayers = await roomPlayerDB.getRoomPlayers(roomId);
+
+    // 广播人机移除
+    const io = req.app.get('io');
+    if (io) {
+      io.to(roomId).emit('bot_removed', {
+        seatNumber: seatNumber,
+        players: updatedPlayers
+      });
+    }
+
+    res.json({
+      message: '人机移除成功',
+      seatNumber: seatNumber,
+      players: updatedPlayers
+    });
+  } catch (error) {
+    console.error('Remove bot error:', error);
     res.status(500).json({ error: '服务器错误' });
   }
 });

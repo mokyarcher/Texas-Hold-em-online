@@ -165,6 +165,48 @@
             opacity: 0.6;
         }
 
+        .seat.bot {
+            border-color: #9b59b6;
+            box-shadow: 0 0 15px rgba(155, 89, 182, 0.3);
+        }
+
+        .seat .bot-badge {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            display: inline-block;
+        }
+
+        .seat.empty:hover {
+            background: rgba(255,255,255,0.05);
+            cursor: pointer;
+        }
+
+        .seat.empty .add-bot-hint {
+            display: none;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            margin-top: 5px;
+        }
+
+        .seat.empty:hover .add-bot-hint {
+            display: block;
+        }
+
+        .seat.bot .remove-bot-hint {
+            display: none;
+            font-size: 0.75rem;
+            color: rgba(231, 76, 60, 0.7);
+            margin-top: 5px;
+        }
+
+        .seat.bot:hover .remove-bot-hint {
+            display: block;
+        }
+
         .actions {
             display: flex;
             justify-content: center;
@@ -581,22 +623,29 @@
                 if (player) {
                     const isPlayerHost = player.user_id === roomData.host_id;
                     const isPlayerReady = player.is_ready;
+                    const isBot = player.is_bot;
                     
                     seatsHTML += `
-                        <div class="seat ${isMyself ? 'myself' : ''} ${isPlayerReady ? 'ready' : ''}">
+                        <div class="seat ${isMyself ? 'myself' : ''} ${isPlayerReady ? 'ready' : ''} ${isBot ? 'bot' : ''}"
+                             onclick="${isHost && isBot ? `removeBot(${i})` : ''}">
                             ${isPlayerHost ? '<div class="seat-host">房主</div>' : ''}
-                            <div class="seat-avatar">${player.username.charAt(0).toUpperCase()}</div>
+                            ${isBot ? '<div class="bot-badge">AI</div>' : ''}
+                            <div class="seat-avatar">
+                                ${isBot ? `<img src="/avatars/${player.bot_avatar || 'avatar1.png'}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : player.username.charAt(0).toUpperCase()}
+                            </div>
                             <div class="seat-name">${escapeHtml(player.nickname || player.username)}</div>
                             <div class="seat-status ${isPlayerReady ? 'ready' : ''}">
                                 ${isPlayerReady ? '已准备' : '等待中'}
                             </div>
+                            ${isHost && isBot ? '<div class="remove-bot-hint">点击移除</div>' : ''}
                         </div>
                     `;
                 } else {
                     seatsHTML += `
-                        <div class="seat empty">
+                        <div class="seat empty" onclick="${isHost ? `addBot(${i})` : ''}">
                             <div class="seat-avatar empty-avatar">?</div>
                             <div class="seat-status">空座位</div>
+                            ${isHost ? '<div class="add-bot-hint">点击添加人机</div>' : ''}
                         </div>
                     `;
                 }
@@ -615,18 +664,19 @@
 
             if (isHost) {
                 // 房主显示开始游戏按钮
-                const allReady = players.every(p => p.user_id === user.id || p.is_ready);
-                const enoughPlayers = players.length >= 2;
+                const realPlayers = players.filter(p => !p.is_bot);
+                const allRealReady = realPlayers.every(p => p.user_id === user.id || p.is_ready);
+                const enoughPlayers = realPlayers.length >= 1;
                 
                 container.innerHTML = `
                     <button class="btn btn-start" 
                             onclick="startGame()" 
-                            ${!allReady || !enoughPlayers ? 'disabled' : ''}>
-                        ${!enoughPlayers ? '至少需要2人' : !allReady ? '等待玩家准备' : '开始游戏'}
+                            ${!allRealReady || !enoughPlayers ? 'disabled' : ''}>
+                        ${!enoughPlayers ? '至少需要1名真实玩家' : !allRealReady ? '等待玩家准备' : '开始游戏'}
                     </button>
                 `;
                 document.getElementById('waitingTip').textContent = 
-                    enoughPlayers && allReady ? '可以开始游戏了！' : '等待玩家准备...';
+                    enoughPlayers && allRealReady ? '可以开始游戏了！' : '等待玩家准备...';
             } else {
                 // 普通玩家显示准备按钮
                 container.innerHTML = `
@@ -656,6 +706,74 @@
                 }
             } catch (error) {
                 console.error('Toggle ready error:', error);
+            }
+        }
+
+        // 添加人机（房主）
+        async function addBot(seatNumber) {
+            if (!isHost) {
+                await showAlert('只有房主可以添加人机', 'error');
+                return;
+            }
+
+            const confirmed = await showConfirm(`要在座位 ${seatNumber + 1} 添加一个人机吗？`, '添加人机');
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/rooms/${roomId}/add-bot`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ seatNumber })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast(`已添加人机：${data.botName}`, 'success');
+                    loadRoom();
+                } else {
+                    await showAlert(data.error || '添加人机失败', 'error');
+                }
+            } catch (error) {
+                console.error('Add bot error:', error);
+                await showAlert('网络错误', 'error');
+            }
+        }
+
+        // 移除人机（房主）
+        async function removeBot(seatNumber) {
+            if (!isHost) {
+                await showAlert('只有房主可以移除人机', 'error');
+                return;
+            }
+
+            const confirmed = await showConfirm(`要移除座位 ${seatNumber + 1} 的人机吗？`, '移除人机');
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/rooms/${roomId}/remove-bot`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ seatNumber })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('人机已移除', 'success');
+                    loadRoom();
+                } else {
+                    await showAlert(data.error || '移除人机失败', 'error');
+                }
+            } catch (error) {
+                console.error('Remove bot error:', error);
+                await showAlert('网络错误', 'error');
             }
         }
 
@@ -700,6 +818,20 @@
             socket.on('host_changed', (data) => {
                 console.log('Host changed:', data);
                 showToast(`房主变更为 ${data.newHostName}`, 'info');
+                loadRoom();
+            });
+
+            // 人机添加
+            socket.on('bot_added', (data) => {
+                console.log('Bot added:', data);
+                showToast(`人机 ${data.botName} 已加入房间`, 'success');
+                loadRoom();
+            });
+
+            // 人机移除
+            socket.on('bot_removed', (data) => {
+                console.log('Bot removed:', data);
+                showToast('人机已离开房间', 'info');
                 loadRoom();
             });
 
