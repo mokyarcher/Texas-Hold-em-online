@@ -755,6 +755,108 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* ==================== 自定义弹窗样式 ==================== */
+        .custom-dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .custom-dialog-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .custom-dialog {
+            background: linear-gradient(145deg, rgba(30,30,30,0.98), rgba(10,10,10,0.99));
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            min-width: 350px;
+            max-width: 450px;
+            padding: 25px;
+            transform: scale(0.9);
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .custom-dialog-overlay.show .custom-dialog {
+            transform: scale(1);
+        }
+
+        .custom-dialog-title {
+            font-size: 1.2rem;
+            color: #ffd700;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .custom-dialog-content {
+            color: rgba(255,255,255,0.9);
+            line-height: 1.6;
+            margin-bottom: 20px;
+            white-space: pre-line;
+        }
+
+        .custom-dialog-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .custom-dialog-btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .custom-dialog-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .custom-dialog-btn.confirm {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+
+        .custom-dialog-btn.cancel {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .custom-dialog-btn.ok {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .custom-dialog-btn.danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        /* 不同类型的弹窗图标颜色 */
+        .custom-dialog-title.info { color: #3498db; }
+        .custom-dialog-title.success { color: #27ae60; }
+        .custom-dialog-title.warning { color: #f39c12; }
+        .custom-dialog-title.error { color: #e74c3c; }
+        .custom-dialog-title.confirm { color: #ffd700; }
     </style>
 </head>
 <body>
@@ -961,6 +1063,15 @@
         </div>
     </div>
 
+    <!-- 自定义弹窗组件 -->
+    <div class="custom-dialog-overlay" id="customDialog">
+        <div class="custom-dialog">
+            <div class="custom-dialog-title" id="customDialogTitle">提示</div>
+            <div class="custom-dialog-content" id="customDialogContent"></div>
+            <div class="custom-dialog-buttons" id="customDialogButtons"></div>
+        </div>
+    </div>
+
     <!-- 修改筹码弹窗 -->
     <div class="modal" id="chipsModal">
         <div class="modal-content">
@@ -988,6 +1099,107 @@
     <script>
         const API_BASE = `${window.location.protocol}//${window.location.host}/api`;
         let currentRoomId = null;
+
+        // ==================== 自定义弹窗函数 ====================
+        
+        /**
+         * 显示提示弹窗（替代 alert）
+         * @param {string} message - 提示内容
+         * @param {string} type - 类型: info/success/warning/error
+         * @param {string} title - 标题（可选）
+         */
+        function showAlert(message, type = 'info', title = null) {
+            return new Promise((resolve) => {
+                const dialog = document.getElementById('customDialog');
+                const titleEl = document.getElementById('customDialogTitle');
+                const contentEl = document.getElementById('customDialogContent');
+                const buttonsEl = document.getElementById('customDialogButtons');
+
+                // 设置标题
+                const titles = {
+                    info: 'ℹ️ 提示',
+                    success: '✅ 成功',
+                    warning: '⚠️ 警告',
+                    error: '❌ 错误'
+                };
+                titleEl.textContent = title || titles[type] || '提示';
+                titleEl.className = 'custom-dialog-title ' + type;
+
+                // 设置内容
+                contentEl.textContent = message;
+
+                // 设置按钮
+                buttonsEl.innerHTML = `
+                    <button class="custom-dialog-btn ok" onclick="closeCustomDialog(true)">确定</button>
+                `;
+
+                // 保存回调
+                window.customDialogCallback = resolve;
+
+                // 显示弹窗
+                dialog.classList.add('show');
+            });
+        }
+
+        /**
+         * 显示确认弹窗（替代 confirm）
+         * @param {string} message - 提示内容
+         * @param {string} title - 标题（可选）
+         * @param {boolean} isDanger - 是否为危险操作（红色按钮）
+         */
+        function showConfirm(message, title = '请确认', isDanger = false) {
+            return new Promise((resolve) => {
+                const dialog = document.getElementById('customDialog');
+                const titleEl = document.getElementById('customDialogTitle');
+                const contentEl = document.getElementById('customDialogContent');
+                const buttonsEl = document.getElementById('customDialogButtons');
+
+                // 设置标题
+                titleEl.textContent = '❓ ' + title;
+                titleEl.className = 'custom-dialog-title confirm';
+
+                // 设置内容
+                contentEl.textContent = message;
+
+                // 设置按钮
+                const confirmBtnClass = isDanger ? 'danger' : 'confirm';
+                buttonsEl.innerHTML = `
+                    <button class="custom-dialog-btn cancel" onclick="closeCustomDialog(false)">取消</button>
+                    <button class="custom-dialog-btn ${confirmBtnClass}" onclick="closeCustomDialog(true)">确定</button>
+                `;
+
+                // 保存回调
+                window.customDialogCallback = resolve;
+
+                // 显示弹窗
+                dialog.classList.add('show');
+            });
+        }
+
+        /**
+         * 关闭自定义弹窗
+         * @param {boolean} result - 用户点击的结果
+         */
+        function closeCustomDialog(result) {
+            const dialog = document.getElementById('customDialog');
+            dialog.classList.remove('show');
+            
+            if (window.customDialogCallback) {
+                window.customDialogCallback(result);
+                window.customDialogCallback = null;
+            }
+        }
+
+        // 点击遮罩关闭（仅用于 alert，confirm 必须点击按钮）
+        document.getElementById('customDialog').addEventListener('click', function(e) {
+            if (e.target === this) {
+                // 如果是 confirm 弹窗，不关闭
+                const buttons = document.getElementById('customDialogButtons');
+                if (buttons.children.length === 1) {
+                    closeCustomDialog(true);
+                }
+            }
+        });
 
         // 检查登录状态
         const token = localStorage.getItem('poker_token');
@@ -1092,9 +1304,8 @@
 
         // 删除房间（房主专用）
         async function deleteRoom(roomId) {
-            if (!confirm('确定要删除这个房间吗？房间内的所有玩家都会被踢出。')) {
-                return;
-            }
+            const confirmed = await showConfirm('确定要删除这个房间吗？房间内的所有玩家都会被踢出。', '删除房间', true);
+            if (!confirmed) return;
 
             try {
                 const response = await fetch(`${API_BASE}/rooms/${roomId}`, {
@@ -1105,20 +1316,21 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert('房间已删除');
+                    await showAlert('房间已删除', 'success');
                     loadRooms();
                 } else {
-                    alert(data.error || '删除失败');
+                    await showAlert(data.error || '删除失败', 'error');
                 }
             } catch (error) {
                 console.error('Delete room error:', error);
-                alert('网络错误');
+                await showAlert('网络错误', 'error');
             }
         }
 
         // 重连游戏
-        function reconnectGame(roomId) {
-            if (confirm('你有一个正在进行的游戏，是否重连？')) {
+        async function reconnectGame(roomId) {
+            const confirmed = await showConfirm('你有一个正在进行的游戏，是否重连？', '重连游戏');
+            if (confirmed) {
                 window.location.href = `game.html?id=${roomId}`;
             }
         }
@@ -1155,11 +1367,11 @@
                     // 跳转到房间页面
                     window.location.href = `room.html?id=${data.room.id}`;
                 } else {
-                    alert(data.error || '创建失败');
+                    await showAlert(data.error || '创建失败', 'error');
                 }
             } catch (error) {
                 console.error('Create room error:', error);
-                alert('网络错误');
+                await showAlert('网络错误', 'error');
             }
         });
 
@@ -1196,11 +1408,11 @@
                 if (response.ok) {
                     window.location.href = `room.html?id=${roomId}`;
                 } else {
-                    alert(data.error || '加入失败');
+                    await showAlert(data.error || '加入失败', 'error');
                 }
             } catch (error) {
                 console.error('Join room error:', error);
-                alert('网络错误');
+                await showAlert('网络错误', 'error');
             }
         }
 
@@ -1548,7 +1760,7 @@
             const amount = parseInt(document.getElementById('chipsAmount').value);
             
             if (isNaN(amount) || amount < 0) {
-                alert('请输入有效的金额');
+                await showAlert('请输入有效的金额', 'warning');
                 return;
             }
 
@@ -1565,23 +1777,22 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert(`筹码修改成功！\n${data.user.username}: ${data.user.oldChips} → ${data.user.newChips}`);
+                    await showAlert(`筹码修改成功！\n${data.user.username}: ${data.user.oldChips} → ${data.user.newChips}`, 'success');
                     hideChipsModal();
                     loadAdminUserList(); // 刷新列表
                 } else {
-                    alert(data.error || '修改失败');
+                    await showAlert(data.error || '修改失败', 'error');
                 }
             } catch (error) {
                 console.error('Update chips error:', error);
-                alert('网络错误');
+                await showAlert('网络错误', 'error');
             }
         }
 
         // 删除用户
         async function deleteUser(userId, nickname) {
-            if (!confirm(`确定要删除用户 "${nickname}" 吗？\n此操作不可恢复！`)) {
-                return;
-            }
+            const confirmed = await showConfirm(`确定要删除用户 "${nickname}" 吗？\n此操作不可恢复！`, '删除用户', true);
+            if (!confirmed) return;
 
             try {
                 const response = await fetch(`${API_BASE}/admin/users/${userId}`, {
@@ -1592,22 +1803,21 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert('用户已删除');
+                    await showAlert('用户已删除', 'success');
                     loadAdminUserList(); // 刷新列表
                 } else {
-                    alert(data.error || '删除失败');
+                    await showAlert(data.error || '删除失败', 'error');
                 }
             } catch (error) {
                 console.error('Delete user error:', error);
-                alert('网络错误');
+                await showAlert('网络错误', 'error');
             }
         }
 
         // 清除所有房间
         async function clearAllRooms() {
-            if (!confirm('⚠️ 警告！\n\n确定要清除所有房间吗？\n此操作会解散所有正在进行的游戏！\n\n此操作不可恢复！')) {
-                return;
-            }
+            const confirmed = await showConfirm('⚠️ 警告！\n\n确定要清除所有房间吗？\n此操作会解散所有正在进行的游戏！\n\n此操作不可恢复！', '清除所有房间', true);
+            if (!confirmed) return;
 
             try {
                 const response = await fetch(`${API_BASE}/admin/rooms/all`, {
@@ -1618,14 +1828,14 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert(`所有房间已清除！\n共删除 ${data.deletedCount} 个房间`);
+                    await showAlert(`所有房间已清除！\n共删除 ${data.deletedCount} 个房间`, 'success');
                     loadRooms(); // 刷新房间列表
                 } else {
-                    alert(data.error || '清除失败');
+                    await showAlert(data.error || '清除失败', 'error');
                 }
             } catch (error) {
                 console.error('Clear all rooms error:', error);
-                alert('网络错误');
+                await showAlert('网络错误', 'error');
             }
         }
 

@@ -99,7 +99,12 @@ class PokerGame {
         // 检查是否还有足够玩家继续
         const activePlayerCount = this.getActivePlayerCount();
         if (activePlayerCount < 2) {
-            alert('游戏结束！玩家数量不足。');
+            // 使用自定义弹窗（如果可用）或原生 alert
+            if (typeof showAlert === 'function') {
+                showAlert('游戏结束！玩家数量不足。', 'warning');
+            } else {
+                alert('游戏结束！玩家数量不足。');
+            }
             return;
         }
         
