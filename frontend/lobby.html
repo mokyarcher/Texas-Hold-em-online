@@ -653,40 +653,42 @@
         /* 个人信息弹窗样式 - 横屏左右分栏 */
         .profile-modal-content {
             background: linear-gradient(145deg, rgba(30,30,30,0.98), rgba(10,10,10,0.99));
-            padding: 30px;
+            padding: 20px;
             border-radius: 12px;
             width: 700px;
             max-width: 95%;
+            max-height: 85vh;
+            overflow-y: auto;
             border: 1px solid rgba(255,255,255,0.1);
         }
 
         .profile-header {
             font-size: 1.4rem;
-            margin-bottom: 25px;
+            margin-bottom: 15px;
             color: #3498db;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 15px;
+            padding-bottom: 10px;
         }
 
         .profile-body {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 25px;
+            gap: 15px;
         }
 
         .profile-left, .profile-right {
             background: rgba(255,255,255,0.03);
             border-radius: 10px;
-            padding: 20px;
+            padding: 15px;
         }
 
         .profile-section-title {
             font-size: 1rem;
             color: #ffd700;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             font-weight: bold;
             display: flex;
             align-items: center;
@@ -703,6 +705,57 @@
             justify-content: center;
             font-size: 2.5rem;
             margin: 0 auto 20px;
+            overflow: hidden;
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .avatar-option {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .avatar-option:hover {
+            background: rgba(255,255,255,0.1);
+            transform: scale(1.1);
+        }
+
+        .avatar-option.selected {
+            border-color: #ffd700;
+            background: rgba(255,215,0,0.1);
+            transform: scale(1.15);
+        }
+
+        .avatar-section {
+            margin-bottom: 20px;
+        }
+
+        .avatar-section-title {
+            color: #ffd700;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            font-weight: bold;
         }
 
         .profile-info-item {
@@ -1068,7 +1121,9 @@
                 <!-- 左侧：信息显示 -->
                 <div class="profile-left">
                     <div class="profile-section-title">📋 我的信息</div>
-                    <div class="profile-avatar">👤</div>
+                    <div class="profile-avatar" id="profileAvatar">
+                        <img id="profileAvatarImg" src="" alt="头像">
+                    </div>
                     <div class="profile-info-item">
                         <span class="profile-info-label">用户名</span>
                         <span class="profile-info-value" id="profileUsername">加载中...</span>
@@ -1085,6 +1140,16 @@
 
                 <!-- 右侧：修改功能 -->
                 <div class="profile-right">
+                    <!-- 修改头像 -->
+                    <div class="avatar-section">
+                        <div class="profile-section-title">🎭 修改头像</div>
+                        <div class="avatar-grid" id="avatarGrid"></div>
+                        <button class="btn-profile-action btn-save" style="margin-top: 15px;" onclick="updateAvatar()">保存头像</button>
+                        <div class="profile-message" id="avatarMessage"></div>
+                    </div>
+
+                    <div class="profile-divider"></div>
+
                     <!-- 修改昵称 -->
                     <div class="profile-section-title">✏️ 修改昵称</div>
                     <div class="profile-form">
@@ -1512,25 +1577,30 @@
         
         // 显示个人信息弹窗
         function showProfileModal() {
-            // 先从本地存储加载数据（立即显示）
             const localUser = JSON.parse(localStorage.getItem('poker_user') || '{}');
             document.getElementById('profileUsername').textContent = localUser.username || '-';
             document.getElementById('profileNickname').textContent = localUser.nickname || localUser.username || '-';
             document.getElementById('profileChips').textContent = localUser.chips || 0;
             
-            // 显示弹窗
+            const avatarFilename = localUser.avatar_filename || 'avatar1.png';
+            const profileAvatarImg = document.getElementById('profileAvatarImg');
+            if (profileAvatarImg) {
+                profileAvatarImg.src = `/avatars/${avatarFilename}`;
+            }
+
             document.getElementById('profileModal').classList.add('show');
-            
-            // 然后从服务器获取最新数据
+
             loadProfileInfo();
-            
-            // 清空输入框和消息
+
             document.getElementById('newNickname').value = '';
             document.getElementById('currentPassword').value = '';
             document.getElementById('newPassword').value = '';
             document.getElementById('confirmPassword').value = '';
             hideProfileMessage('nicknameMessage');
             hideProfileMessage('passwordMessage');
+            hideProfileMessage('avatarMessage');
+
+            initAvatarSelector(avatarFilename);
         }
 
         // 隐藏个人信息弹窗
@@ -1553,6 +1623,13 @@
                 document.getElementById('profileUsername').textContent = userInfo.username;
                 document.getElementById('profileNickname').textContent = userInfo.nickname || userInfo.username;
                 document.getElementById('profileChips').textContent = userInfo.chips || 0;
+
+                const avatarFilename = userInfo.avatar_filename || 'avatar1.png';
+                document.getElementById('profileAvatarImg').src = `/avatars/${avatarFilename}`;
+
+                const localUser = JSON.parse(localStorage.getItem('poker_user') || '{}');
+                localUser.avatar_filename = avatarFilename;
+                localStorage.setItem('poker_user', JSON.stringify(localUser));
             } catch (error) {
                 console.error('Load profile error:', error);
             }
@@ -1661,6 +1738,128 @@
             } catch (error) {
                 console.error('Update password error:', error);
                 showProfileMessage('passwordMessage', '网络错误', false);
+            }
+        }
+
+        // 初始化头像选择器
+        function initAvatarSelector(currentAvatarFilename) {
+            const avatarGrid = document.getElementById('avatarGrid');
+            avatarGrid.innerHTML = '';
+
+            const avatars = [
+                'avatar1.png', 'avatar2.png', 'avatar3.png', 'avatar4.png',
+                'avatar5.png', 'avatar6.png', 'avatar7.png', 'avatar8.png',
+                'avatar9.png', 'avatar10.png', 'avatar11.png', 'avatar12.png',
+                'avatar13.png', 'avatar14.png', 'avatar15.png', 'avatar16.png',
+                'avatar17.png', 'avatar18.png', 'avatar19.png', 'avatar20.png'
+            ];
+
+            avatars.forEach(avatarFilename => {
+                const avatarOption = document.createElement('div');
+                avatarOption.className = 'avatar-option';
+                
+                const img = document.createElement('img');
+                img.src = `/avatars/${avatarFilename}`;
+                img.alt = avatarFilename;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'cover';
+                img.style.borderRadius = '50%';
+                
+                avatarOption.appendChild(img);
+                avatarOption.onclick = () => selectAvatar(avatarFilename);
+                
+                if (avatarFilename === currentAvatarFilename) {
+                    avatarOption.classList.add('selected');
+                }
+                
+                avatarGrid.appendChild(avatarOption);
+            });
+        }
+
+        // 选择头像
+        function selectAvatar(avatarFilename) {
+            document.querySelectorAll('.avatar-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            event.target.closest('.avatar-option').classList.add('selected');
+            event.target.closest('.avatar-option').dataset.selectedAvatar = avatarFilename;
+        }
+
+        // 修改头像
+        async function updateAvatar() {
+            const selectedAvatar = document.querySelector('.avatar-option.selected');
+            
+            if (!selectedAvatar) {
+                showProfileMessage('avatarMessage', '请先选择一个头像', false);
+                return;
+            }
+
+            const avatarFilename = selectedAvatar.dataset.selectedAvatar;
+            console.log('[Update Avatar] Selected avatar:', avatarFilename);
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/update-avatar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ avatarFilename })
+                });
+
+                console.log('[Update Avatar] Response status:', response.status);
+                const data = await response.json();
+                console.log('[Update Avatar] Response data:', data);
+
+                if (response.ok) {
+                    console.log('[Update Avatar] Updating UI...');
+                    
+                    try {
+                        showProfileMessage('avatarMessage', '头像修改成功！', true);
+                        
+                        console.log('[Update Avatar] Updating profileAvatarImg...');
+                        const profileAvatarImg = document.getElementById('profileAvatarImg');
+                        if (!profileAvatarImg) {
+                            console.error('[Update Avatar] Error: profileAvatarImg element not found');
+                            throw new Error('profileAvatarImg element not found');
+                        }
+                        profileAvatarImg.src = `/avatars/${avatarFilename}`;
+                        console.log('[Update Avatar] profileAvatarImg src updated');
+                        
+                        console.log('[Update Avatar] Getting localUser from localStorage...');
+                        const localUser = JSON.parse(localStorage.getItem('poker_user') || '{}');
+                        console.log('[Update Avatar] Current localUser:', localUser);
+                        
+                        localUser.avatar_filename = avatarFilename;
+                        localStorage.setItem('poker_user', JSON.stringify(localUser));
+                        console.log('[Update Avatar] Local storage updated');
+                        
+                        console.log('[Update Avatar] Getting username element...');
+                        const usernameElement = document.getElementById('username');
+                        if (!usernameElement) {
+                            console.error('[Update Avatar] Error: username element not found');
+                            throw new Error('username element not found');
+                        }
+                        usernameElement.textContent = localUser.nickname || localUser.username;
+                        console.log('[Update Avatar] Username updated');
+                        
+                        console.log('[Update Avatar] UI update completed successfully');
+                    } catch (uiError) {
+                        console.error('[Update Avatar] UI update error:', uiError);
+                        console.error('[Update Avatar] UI error message:', uiError.message);
+                        console.error('[Update Avatar] UI error stack:', uiError.stack);
+                        showProfileMessage('avatarMessage', '界面更新失败：' + uiError.message, false);
+                    }
+                } else {
+                    console.error('[Update Avatar] Server error:', data.error);
+                    showProfileMessage('avatarMessage', data.error || '修改失败', false);
+                }
+            } catch (error) {
+                console.error('[Update Avatar] Error details:', error);
+                console.error('[Update Avatar] Error message:', error.message);
+                console.error('[Update Avatar] Error stack:', error.stack);
+                showProfileMessage('avatarMessage', '网络错误', false);
             }
         }
 

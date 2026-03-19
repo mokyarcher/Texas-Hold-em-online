@@ -31,6 +31,7 @@ app.use(express.json());
 
 // 静态文件（前端页面）
 app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/test', express.static(path.join(__dirname, '../test')));
 
 // 路由

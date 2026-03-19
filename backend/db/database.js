@@ -22,6 +22,7 @@ function initDatabase() {
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       nickname TEXT,
+      avatar_filename TEXT DEFAULT 'avatar1.png',
       chips INTEGER DEFAULT 20000,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       last_login DATETIME
@@ -168,6 +169,11 @@ const userDB = {
   // 更新昵称
   async updateNickname(id, nickname) {
     return dbRun('UPDATE users SET nickname = ? WHERE id = ?', [nickname, id]);
+  },
+
+  // 更新头像
+  async updateAvatarFilename(id, avatarFilename) {
+    return dbRun('UPDATE users SET avatar_filename = ? WHERE id = ?', [avatarFilename, id]);
   },
 
   // 更新密码

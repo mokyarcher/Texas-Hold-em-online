@@ -155,6 +155,7 @@ router.get('/me', async (req, res) => {
       id: user.id,
       username: user.username,
       nickname: user.nickname,
+      avatar_filename: user.avatar_filename,
       chips: user.chips,
       isAdmin
     });
@@ -174,8 +175,8 @@ router.post('/update-nickname', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: '昵称不能为空' });
     }
 
-    if (nickname.length > 20) {
-      return res.status(400).json({ error: '昵称不能超过20个字符' });
+    if (nickname.trim().length > 20) {
+      return res.status(400).json({ error: '昵称长度不能超过20个字符' });
     }
 
     await userDB.updateNickname(userId, nickname.trim());
@@ -186,6 +187,33 @@ router.post('/update-nickname', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('Update nickname error:', error);
+    res.status(500).json({ error: '服务器错误' });
+  }
+});
+
+// 修改头像
+router.post('/update-avatar', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { avatarFilename } = req.body;
+
+    console.log('[Update Avatar] Request:', { userId, avatarFilename });
+
+    if (!avatarFilename) {
+      console.log('[Update Avatar] Error: avatarFilename is empty');
+      return res.status(400).json({ error: '头像文件名不能为空' });
+    }
+
+    console.log('[Update Avatar] Calling updateAvatarFilename...');
+    await userDB.updateAvatarFilename(userId, avatarFilename);
+    console.log('[Update Avatar] Success:', { userId, avatarFilename });
+
+    res.json({
+      message: '头像修改成功',
+      avatarFilename
+    });
+  } catch (error) {
+    console.error('[Update Avatar] Error:', error);
     res.status(500).json({ error: '服务器错误' });
   }
 });

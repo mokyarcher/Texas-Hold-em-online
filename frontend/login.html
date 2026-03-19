@@ -149,6 +149,140 @@
         .loading.show {
             display: block;
         }
+
+        .terms-link {
+            text-align: center;
+            margin-top: 20px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+        }
+
+        .terms-link a {
+            color: #ffd700;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .terms-link a:hover {
+            text-decoration: underline;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 15px;
+        }
+
+        .modal-header h2 {
+            color: #ffd700;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.6);
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .modal-close:hover {
+            color: #ffd700;
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            color: rgba(255,255,255,0.8);
+            line-height: 1.8;
+            font-size: 0.95rem;
+        }
+
+        .modal-body h3 {
+            color: #ffd700;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .modal-body h3:first-child {
+            margin-top: 0;
+        }
+
+        .modal-body ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .modal-body li {
+            margin-bottom: 8px;
+        }
+
+        .modal-body p {
+            margin-bottom: 15px;
+        }
+
+        .modal-footer {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .modal-footer button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+            color: #1a1a2e;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .modal-footer button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255,215,0,0.4);
+        }
     </style>
 </head>
 <body>
@@ -175,7 +309,11 @@
                 <label>密码</label>
                 <input type="password" id="loginPassword" required placeholder="请输入密码">
             </div>
-            <button type="submit" class="btn btn-primary">登录</button>
+            <div class="form-group" style="display: flex; align-items: center; margin-top: 10px;">
+                <input type="checkbox" id="loginTermsAgree" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                <label for="loginTermsAgree" style="margin: 0; cursor: pointer; color: rgba(255,255,255,0.8); font-size: 0.9rem;">我已阅读并同意<a onclick="showTerms(); event.preventDefault();" style="color: #ffd700; text-decoration: underline; cursor: pointer;">使用条款</a></label>
+            </div>
+            <button type="submit" id="loginBtn" class="btn btn-primary" disabled style="opacity: 0.5; cursor: not-allowed;">登录</button>
         </form>
 
         <form id="registerForm" style="display: none;">
@@ -195,10 +333,68 @@
                 <label>确认密码</label>
                 <input type="password" id="regConfirmPassword" required placeholder="再次输入密码">
             </div>
-            <button type="submit" class="btn btn-primary">注册</button>
+            <div class="form-group" style="display: flex; align-items: center; margin-top: 10px;">
+                <input type="checkbox" id="registerTermsAgree" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                <label for="registerTermsAgree" style="margin: 0; cursor: pointer; color: rgba(255,255,255,0.8); font-size: 0.9rem;">我已阅读并同意<a onclick="showTerms(); event.preventDefault();" style="color: #ffd700; text-decoration: underline; cursor: pointer;">使用条款</a></label>
+            </div>
+            <button type="submit" id="registerBtn" class="btn btn-primary" disabled style="opacity: 0.5; cursor: not-allowed;">注册</button>
         </form>
 
         <button class="btn btn-guest" onclick="guestLogin()">🎮 游客登录</button>
+    </div>
+
+    <div id="termsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📜 使用条款</h2>
+                <button class="modal-close" onclick="closeTerms()">×</button>
+            </div>
+            <div class="modal-body">
+                <h3>1. 服务性质</h3>
+                <p>本平台为纯娱乐性质的德州扑克游戏平台，仅供用户休闲娱乐使用。所有游戏均为虚拟游戏，不涉及任何形式的现实货币交易或虚拟货币交易。</p>
+
+                <h3>2. 免责声明</h3>
+                <ul>
+                    <li>本平台不提供任何形式的充值、提现或货币兑换服务</li>
+                    <li>平台内的所有筹码均为虚拟游戏币，仅用于游戏内娱乐，无实际货币价值</li>
+                    <li>本平台为非盈利性平台，不涉及任何赌博或博彩活动</li>
+                    <li>用户在平台内的所有行为均为自愿参与，平台不对任何损失承担责任</li>
+                </ul>
+
+                <h3>3. 用户责任</h3>
+                <ul>
+                    <li>用户应遵守当地法律法规，合理使用本平台</li>
+                    <li>用户需对自己的账号安全负责，妥善保管账号和密码</li>
+                    <li>禁止利用平台进行任何违法或不当行为</li>
+                    <li>用户在平台内的言论和行为应遵守网络道德和法律法规</li>
+                </ul>
+
+                <h3>4. 服务变更</h3>
+                <p>本平台保留随时修改、暂停或终止服务的权利，无需提前通知。平台不对因服务中断或变更造成的任何损失承担责任。</p>
+
+                <h3>5. 隐私保护</h3>
+                <p>平台将保护用户的个人信息安全，不会向第三方泄露用户信息，除非法律法规要求或用户同意。</p>
+
+                <h3>6. 条款变更</h3>
+                <p>本平台保留随时修改本条款的权利，修改后的条款将在平台上公布。用户继续使用本平台即表示同意修改后的条款。</p>
+
+                <h3>7. 争议解决</h3>
+                <p>因本条款引起的任何争议，双方应友好协商解决。协商不成的，任何一方均可向有管辖权的人民法院提起诉讼。</p>
+
+                <p style="text-align: center; margin-top: 30px; color: #ffd700; font-weight: bold;">
+                    请仔细阅读以上条款，使用本平台即表示您已同意并接受所有条款。
+                </p>
+            </div>
+            <div class="modal-footer">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; cursor: pointer; color: rgba(255,255,255,0.8);">
+                        <input type="checkbox" id="termsAgree" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                        <span>我已阅读并同意以上所有条款</span>
+                    </label>
+                </div>
+                <button id="termsAgreeBtn" onclick="closeTerms()" disabled style="opacity: 0.5; cursor: not-allowed;">我已阅读并同意</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -221,7 +417,7 @@
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
-            
+
             if (tab === 'login') {
                 document.getElementById('loginForm').style.display = 'block';
                 document.getElementById('registerForm').style.display = 'none';
@@ -231,6 +427,82 @@
             }
             document.getElementById('errorMsg').textContent = '';
         }
+
+        function showTerms() {
+            document.getElementById('termsModal').classList.add('show');
+        }
+
+        function closeTerms() {
+            document.getElementById('termsModal').classList.remove('show');
+        }
+
+        document.getElementById('termsModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTerms();
+            }
+        });
+
+        document.getElementById('termsAgree').addEventListener('change', function() {
+            const agreeBtn = document.getElementById('termsAgreeBtn');
+            agreeBtn.disabled = !this.checked;
+            agreeBtn.style.opacity = this.checked ? '1' : '0.5';
+            agreeBtn.style.cursor = this.checked ? 'pointer' : 'not-allowed';
+        });
+
+        document.getElementById('loginTermsAgree').addEventListener('change', function() {
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.disabled = !this.checked;
+            loginBtn.style.opacity = this.checked ? '1' : '0.5';
+            loginBtn.style.cursor = this.checked ? 'pointer' : 'not-allowed';
+        });
+
+        document.getElementById('registerTermsAgree').addEventListener('change', function() {
+            const registerBtn = document.getElementById('registerBtn');
+            registerBtn.disabled = !this.checked;
+            registerBtn.style.opacity = this.checked ? '1' : '0.5';
+            registerBtn.style.cursor = this.checked ? 'pointer' : 'not-allowed';
+        });
+
+        function closeTerms() {
+            const termsAgree = document.getElementById('termsAgree');
+            const loginTermsAgree = document.getElementById('loginTermsAgree');
+            const registerTermsAgree = document.getElementById('registerTermsAgree');
+
+            if (termsAgree.checked) {
+                loginTermsAgree.checked = true;
+                registerTermsAgree.checked = true;
+
+                document.getElementById('loginBtn').disabled = false;
+                document.getElementById('loginBtn').style.opacity = '1';
+                document.getElementById('loginBtn').style.cursor = 'pointer';
+
+                document.getElementById('registerBtn').disabled = false;
+                document.getElementById('registerBtn').style.opacity = '1';
+                document.getElementById('registerBtn').style.cursor = 'pointer';
+
+                localStorage.setItem('terms_agreed', 'true');
+            }
+
+            document.getElementById('termsModal').classList.remove('show');
+        }
+
+        function checkTermsAgreed() {
+            const termsAgreed = localStorage.getItem('terms_agreed');
+            if (termsAgreed === 'true') {
+                document.getElementById('loginTermsAgree').checked = true;
+                document.getElementById('registerTermsAgree').checked = true;
+
+                document.getElementById('loginBtn').disabled = false;
+                document.getElementById('loginBtn').style.opacity = '1';
+                document.getElementById('loginBtn').style.cursor = 'pointer';
+
+                document.getElementById('registerBtn').disabled = false;
+                document.getElementById('registerBtn').style.opacity = '1';
+                document.getElementById('registerBtn').style.cursor = 'pointer';
+            }
+        }
+
+        checkTermsAgreed();
 
         // 登录表单提交
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
