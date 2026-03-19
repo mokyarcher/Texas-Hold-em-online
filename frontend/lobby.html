@@ -579,6 +579,38 @@
             margin-top: 2px;
         }
 
+        .leaderboard-status {
+            font-size: 0.75rem;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .leaderboard-status.online {
+            color: #27ae60;
+        }
+
+        .leaderboard-status.offline {
+            color: rgba(255,255,255,0.4);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.online {
+            background: #27ae60;
+            box-shadow: 0 0 4px #27ae60;
+        }
+
+        .status-dot.offline {
+            background: rgba(255,255,255,0.3);
+        }
+
         .leaderboard-chips {
             text-align: right;
             color: #ffd700;
@@ -1653,15 +1685,24 @@
                 const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
                 const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
                 const isCurrentUser = item.is_current_user === 1;
+                const isOnline = item.isOnline === 1;
                 
                 // 前三名特殊名字样式
                 const nameClass = rank === 1 ? 'rank-1-name' : rank === 2 ? 'rank-2-name' : rank === 3 ? 'rank-3-name' : '';
+                
+                // 在线状态
+                const statusClass = isOnline ? 'online' : 'offline';
+                const statusText = isOnline ? '在线' : '离线';
                 
                 return `
                     <div class="leaderboard-item ${isCurrentUser ? 'current-user' : ''}">
                         <div class="rank-number ${rankClass}">${rankIcon}</div>
                         <div class="leaderboard-user-info">
                             <div class="leaderboard-username ${nameClass}">${escapeHtml(item.nickname || item.username)}</div>
+                            <div class="leaderboard-status ${statusClass}">
+                                <span class="status-dot ${statusClass}"></span>
+                                ${statusText}
+                            </div>
                             ${isCurrentUser ? '<div class="leaderboard-user-tag">👤 你</div>' : ''}
                         </div>
                         <div class="leaderboard-chips">💰 ${item.chips || 0}</div>

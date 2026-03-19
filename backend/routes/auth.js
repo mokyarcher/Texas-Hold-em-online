@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { userDB } = require('../db/database');
 const { generateToken, authMiddleware } = require('../middleware/auth');
+const { getOnlineUsers } = require('../socket/gameHandler');
 
 const router = express.Router();
 
@@ -115,7 +116,17 @@ router.get('/leaderboard', authMiddleware, async (req, res) => {
   try {
     const currentUserId = req.userId;
     const leaderboard = await userDB.getLeaderboard(currentUserId);
-    res.json(leaderboard);
+    
+    // 获取在线用户集合
+    const onlineUsers = getOnlineUsers();
+    
+    // 为每个用户添加在线状态
+    const leaderboardWithStatus = leaderboard.map(user => ({
+      ...user,
+      isOnline: onlineUsers.has(user.id) ? 1 : 0
+    }));
+    
+    res.json(leaderboardWithStatus);
   } catch (error) {
     console.error('Get leaderboard error:', error);
     res.status(500).json({ error: '服务器错误' });

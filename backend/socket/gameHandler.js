@@ -5,6 +5,20 @@ const HandEvaluator = require('../utils/HandEvaluator');
 const activeGames = new Map();
 // 存储 socket 到用户/房间的映射
 const socketMap = new Map();
+// 存储在线用户集合 (userId -> { socketId, lastActive })
+const onlineUsers = new Map();
+
+// 获取在线用户列表（导出供其他模块使用）
+function getOnlineUsers() {
+  return onlineUsers;
+}
+
+// 更新用户最后活跃时间
+function updateUserActivity(userId) {
+  if (onlineUsers.has(userId)) {
+    onlineUsers.get(userId).lastActive = Date.now();
+  }
+}
 
 class GameState {
   constructor(roomId, players, config) {
@@ -139,12 +153,23 @@ class GameState {
 function initSocketHandlers(io) {
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
+    
+    // 标记为已认证（将在 join_game 时设置 userId）
+    socket.authenticated = false;
 
     // 加入房间
     socket.on('join_game', ({ roomId, userId, token }) => {
       socket.join(roomId);
       socket.roomId = roomId;
       socket.userId = userId;
+      socket.authenticated = true;
+      
+      // 添加到在线用户集合
+      onlineUsers.set(userId, {
+        socketId: socket.id,
+        lastActive: Date.now()
+      });
+      console.log(`User ${userId} is now online. Total online: ${onlineUsers.size}`);
       
       // 清理该用户之前的 socket 记录（防止页面刷新后旧连接残留）
       for (const [sid, info] of socketMap.entries()) {
@@ -443,6 +468,13 @@ function initSocketHandlers(io) {
     // 断开连接
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
+      
+      // 从在线用户集合移除
+      if (socket.userId && onlineUsers.has(socket.userId)) {
+        onlineUsers.delete(socket.userId);
+        console.log(`User ${socket.userId} is now offline. Total online: ${onlineUsers.size}`);
+      }
+      
       const info = socketMap.get(socket.id);
       if (info) {
         const { roomId, userId } = info;
@@ -809,5 +841,6 @@ function broadcastGameState(io, roomId, game) {
 
 module.exports = {
   initSocketHandlers,
-  activeGames
+  activeGames,
+  getOnlineUsers
 };
