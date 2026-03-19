@@ -117,6 +117,14 @@ const userDB = {
     );
   },
 
+  // 根据ID查找用户（包含密码）
+  async findByIdWithPassword(id) {
+    return dbGet(
+      'SELECT * FROM users WHERE id = ?',
+      [id]
+    );
+  },
+
   // 获取排行榜（按筹码排序）
   async getLeaderboard(currentUserId) {
     return dbAll(`
@@ -155,6 +163,16 @@ const userDB = {
   // 更新筹码
   async updateChips(id, chips) {
     return dbRun('UPDATE users SET chips = ? WHERE id = ?', [chips, id]);
+  },
+
+  // 更新昵称
+  async updateNickname(id, nickname) {
+    return dbRun('UPDATE users SET nickname = ? WHERE id = ?', [nickname, id]);
+  },
+
+  // 更新密码
+  async updatePassword(id, password) {
+    return dbRun('UPDATE users SET password = ? WHERE id = ?', [password, id]);
   }
 };
 

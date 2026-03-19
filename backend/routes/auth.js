@@ -148,4 +148,69 @@ router.get('/me', async (req, res) => {
   }
 });
 
+// 修改昵称
+router.post('/update-nickname', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { nickname } = req.body;
+
+    if (!nickname || nickname.trim().length === 0) {
+      return res.status(400).json({ error: '昵称不能为空' });
+    }
+
+    if (nickname.length > 20) {
+      return res.status(400).json({ error: '昵称不能超过20个字符' });
+    }
+
+    await userDB.updateNickname(userId, nickname.trim());
+
+    res.json({
+      message: '昵称修改成功',
+      nickname: nickname.trim()
+    });
+  } catch (error) {
+    console.error('Update nickname error:', error);
+    res.status(500).json({ error: '服务器错误' });
+  }
+});
+
+// 修改密码
+router.post('/update-password', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: '当前密码和新密码不能为空' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: '新密码长度至少6个字符' });
+    }
+
+    // 获取用户信息（需要密码字段）
+    const user = await userDB.findByIdWithPassword(userId);
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    // 验证当前密码
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: '当前密码错误' });
+    }
+
+    // 加密新密码
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await userDB.updatePassword(userId, hashedPassword);
+
+    res.json({
+      message: '密码修改成功'
+    });
+  } catch (error) {
+    console.error('Update password error:', error);
+    res.status(500).json({ error: '服务器错误' });
+  }
+});
+
 module.exports = router;

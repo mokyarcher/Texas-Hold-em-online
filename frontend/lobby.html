@@ -44,6 +44,20 @@
             font-weight: bold;
         }
 
+        .btn-profile {
+            padding: 8px 20px;
+            background: rgba(52, 152, 219, 0.8);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-profile:hover {
+            background: rgba(52, 152, 219, 1);
+        }
+
         .btn-logout {
             padding: 8px 20px;
             background: rgba(231, 76, 60, 0.8);
@@ -548,6 +562,144 @@
             padding: 40px;
             color: rgba(255,255,255,0.5);
         }
+
+        /* 个人信息弹窗样式 */
+        .profile-modal-content {
+            background: linear-gradient(145deg, rgba(30,30,30,0.98), rgba(10,10,10,0.99));
+            padding: 30px;
+            border-radius: 12px;
+            width: 450px;
+            max-width: 95%;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .profile-header {
+            font-size: 1.4rem;
+            margin-bottom: 25px;
+            color: #3498db;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .profile-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+        }
+
+        .profile-section-title {
+            font-size: 1rem;
+            color: #ffd700;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .profile-info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .profile-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .profile-info-label {
+            color: rgba(255,255,255,0.6);
+        }
+
+        .profile-info-value {
+            color: white;
+            font-weight: 500;
+        }
+
+        .profile-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .profile-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .profile-input-group label {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+        }
+
+        .profile-input-group input {
+            padding: 10px 12px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .profile-input-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .profile-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-profile-action {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .btn-save {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: #2ecc71;
+        }
+
+        .btn-cancel-profile {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .btn-cancel-profile:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .profile-message {
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .profile-message.success {
+            background: rgba(39, 174, 96, 0.2);
+            color: #2ecc71;
+            border: 1px solid rgba(39, 174, 96, 0.3);
+        }
+
+        .profile-message.error {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -556,6 +708,7 @@
         <div class="user-info">
             <span id="username">加载中...</span>
             <span class="chips">💰 <span id="chips">0</span></span>
+            <button class="btn-profile" onclick="showProfileModal()">👤 个人信息</button>
             <button class="btn-logout" onclick="logout()">退出</button>
         </div>
     </div>
@@ -684,6 +837,71 @@
                     <span>一键清除所有房间（危险操作）</span>
                     <button class="btn-danger" onclick="clearAllRooms()">🗑️ 清除所有房间</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 个人信息弹窗 -->
+    <div class="modal" id="profileModal">
+        <div class="profile-modal-content">
+            <div class="profile-header">
+                <span>👤 个人信息</span>
+                <button class="btn-close" onclick="hideProfileModal()">关闭</button>
+            </div>
+            
+            <!-- 基本信息 -->
+            <div class="profile-section">
+                <div class="profile-section-title">📋 基本信息</div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label">用户名</span>
+                    <span class="profile-info-value" id="profileUsername">-</span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label">昵称</span>
+                    <span class="profile-info-value" id="profileNickname">-</span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label">当前筹码</span>
+                    <span class="profile-info-value" style="color: #ffd700;">💰 <span id="profileChips">0</span></span>
+                </div>
+            </div>
+
+            <!-- 修改昵称 -->
+            <div class="profile-section">
+                <div class="profile-section-title">✏️ 修改昵称</div>
+                <div class="profile-form">
+                    <div class="profile-input-group">
+                        <label>新昵称</label>
+                        <input type="text" id="newNickname" placeholder="输入新昵称" maxlength="20">
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-profile-action btn-save" onclick="updateNickname()">保存昵称</button>
+                    </div>
+                </div>
+                <div class="profile-message" id="nicknameMessage"></div>
+            </div>
+
+            <!-- 修改密码 -->
+            <div class="profile-section">
+                <div class="profile-section-title">🔒 修改密码</div>
+                <div class="profile-form">
+                    <div class="profile-input-group">
+                        <label>当前密码</label>
+                        <input type="password" id="currentPassword" placeholder="输入当前密码">
+                    </div>
+                    <div class="profile-input-group">
+                        <label>新密码</label>
+                        <input type="password" id="newPassword" placeholder="输入新密码（至少6位）">
+                    </div>
+                    <div class="profile-input-group">
+                        <label>确认新密码</label>
+                        <input type="password" id="confirmPassword" placeholder="再次输入新密码">
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-profile-action btn-save" onclick="updatePassword()">修改密码</button>
+                    </div>
+                </div>
+                <div class="profile-message" id="passwordMessage"></div>
             </div>
         </div>
     </div>
@@ -963,6 +1181,152 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // ==================== 个人信息功能 ====================
+        
+        // 显示个人信息弹窗
+        function showProfileModal() {
+            document.getElementById('profileModal').classList.add('show');
+            loadProfileInfo();
+            // 清空输入框和消息
+            document.getElementById('newNickname').value = '';
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            hideProfileMessage('nicknameMessage');
+            hideProfileMessage('passwordMessage');
+        }
+
+        // 隐藏个人信息弹窗
+        function hideProfileModal() {
+            document.getElementById('profileModal').classList.remove('show');
+        }
+
+        // 加载个人信息
+        async function loadProfileInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error('加载失败');
+                }
+
+                const userInfo = await response.json();
+                document.getElementById('profileUsername').textContent = userInfo.username;
+                document.getElementById('profileNickname').textContent = userInfo.nickname || userInfo.username;
+                document.getElementById('profileChips').textContent = userInfo.chips || 0;
+            } catch (error) {
+                console.error('Load profile error:', error);
+            }
+        }
+
+        // 显示消息
+        function showProfileMessage(elementId, message, isSuccess) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.className = 'profile-message ' + (isSuccess ? 'success' : 'error');
+            el.style.display = 'block';
+        }
+
+        // 隐藏消息
+        function hideProfileMessage(elementId) {
+            const el = document.getElementById(elementId);
+            el.style.display = 'none';
+        }
+
+        // 修改昵称
+        async function updateNickname() {
+            const newNickname = document.getElementById('newNickname').value.trim();
+            
+            if (!newNickname) {
+                showProfileMessage('nicknameMessage', '请输入新昵称', false);
+                return;
+            }
+
+            if (newNickname.length > 20) {
+                showProfileMessage('nicknameMessage', '昵称不能超过20个字符', false);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/update-nickname`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ nickname: newNickname })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showProfileMessage('nicknameMessage', '昵称修改成功！', true);
+                    // 更新本地存储的用户信息
+                    user.nickname = newNickname;
+                    localStorage.setItem('poker_user', JSON.stringify(user));
+                    // 更新页面显示
+                    document.getElementById('username').textContent = newNickname;
+                    document.getElementById('profileNickname').textContent = newNickname;
+                    document.getElementById('newNickname').value = '';
+                } else {
+                    showProfileMessage('nicknameMessage', data.error || '修改失败', false);
+                }
+            } catch (error) {
+                console.error('Update nickname error:', error);
+                showProfileMessage('nicknameMessage', '网络错误', false);
+            }
+        }
+
+        // 修改密码
+        async function updatePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showProfileMessage('passwordMessage', '请填写所有密码字段', false);
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showProfileMessage('passwordMessage', '新密码长度至少6个字符', false);
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showProfileMessage('passwordMessage', '两次输入的新密码不一致', false);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/update-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showProfileMessage('passwordMessage', '密码修改成功！请使用新密码重新登录', true);
+                    // 清空密码输入框
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                } else {
+                    showProfileMessage('passwordMessage', data.error || '修改失败', false);
+                }
+            } catch (error) {
+                console.error('Update password error:', error);
+                showProfileMessage('passwordMessage', '网络错误', false);
+            }
         }
 
         // ==================== 排行榜功能 ====================
