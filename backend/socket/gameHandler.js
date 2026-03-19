@@ -5,12 +5,24 @@ const HandEvaluator = require('../utils/HandEvaluator');
 const activeGames = new Map();
 // 存储 socket 到用户/房间的映射
 const socketMap = new Map();
-// 存储在线用户集合 (userId -> { socketId, lastActive })
+// 存储在线用户集合 (userId -> { socketId, status, roomId, gameRoomId, lastActive })
+// status: 'online' | 'in_room' | 'in_game'
 const onlineUsers = new Map();
 
 // 获取在线用户列表（导出供其他模块使用）
 function getOnlineUsers() {
   return onlineUsers;
+}
+
+// 更新用户状态
+function updateUserStatus(userId, status, roomId = null, gameRoomId = null) {
+  if (onlineUsers.has(userId)) {
+    const user = onlineUsers.get(userId);
+    user.status = status;
+    if (roomId !== undefined) user.roomId = roomId;
+    if (gameRoomId !== undefined) user.gameRoomId = gameRoomId;
+    user.lastActive = Date.now();
+  }
 }
 
 // 更新用户最后活跃时间
@@ -154,22 +166,77 @@ function initSocketHandlers(io) {
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
     
-    // 标记为已认证（将在 join_game 时设置 userId）
+    // 标记为已认证（将在 user_online、join_room 或 join_game 时设置 userId）
     socket.authenticated = false;
+    
+    // 用户上线（在大厅页面）
+    socket.on('user_online', ({ userId }) => {
+      socket.userId = userId;
+      socket.authenticated = true;
+      
+      // 添加到在线用户集合，状态为 'online'（在大厅）
+      onlineUsers.set(userId, {
+        socketId: socket.id,
+        status: 'online',  // online | in_room | in_game
+        roomId: null,
+        gameRoomId: null,
+        lastActive: Date.now()
+      });
+      
+      console.log(`User ${userId} is now online (in lobby). Total online: ${onlineUsers.size}`);
+    });
 
-    // 加入房间
+    // 加入等待房间（在 room.html 页面）
+    socket.on('join_room', ({ roomId, userId, token }) => {
+      socket.join(roomId);
+      socket.roomId = roomId;
+      socket.userId = userId;
+      socket.authenticated = true;
+      
+      // 更新用户状态为 'in_room'
+      if (onlineUsers.has(userId)) {
+        const user = onlineUsers.get(userId);
+        user.status = 'in_room';
+        user.roomId = roomId;
+        user.lastActive = Date.now();
+      } else {
+        onlineUsers.set(userId, {
+          socketId: socket.id,
+          status: 'in_room',
+          roomId: roomId,
+          gameRoomId: null,
+          lastActive: Date.now()
+        });
+      }
+      
+      socketMap.set(socket.id, { roomId, userId });
+      console.log(`User ${userId} joined waiting room ${roomId}. Total online: ${onlineUsers.size}`);
+    });
+
+    // 加入游戏（在 game.html 页面，游戏开始后进行游戏）
     socket.on('join_game', ({ roomId, userId, token }) => {
       socket.join(roomId);
       socket.roomId = roomId;
       socket.userId = userId;
       socket.authenticated = true;
       
-      // 添加到在线用户集合
-      onlineUsers.set(userId, {
-        socketId: socket.id,
-        lastActive: Date.now()
-      });
-      console.log(`User ${userId} is now online. Total online: ${onlineUsers.size}`);
+      // 更新用户状态为 'in_game'
+      if (onlineUsers.has(userId)) {
+        const user = onlineUsers.get(userId);
+        user.status = 'in_game';
+        user.gameRoomId = roomId;
+        user.lastActive = Date.now();
+      } else {
+        // 如果之前没有记录，添加新记录
+        onlineUsers.set(userId, {
+          socketId: socket.id,
+          status: 'in_game',
+          roomId: null,
+          gameRoomId: roomId,
+          lastActive: Date.now()
+        });
+      }
+      console.log(`User ${userId} joined game room ${roomId}. Total online: ${onlineUsers.size}`);
       
       // 清理该用户之前的 socket 记录（防止页面刷新后旧连接残留）
       for (const [sid, info] of socketMap.entries()) {

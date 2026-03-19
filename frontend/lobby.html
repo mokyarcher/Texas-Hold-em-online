@@ -587,8 +587,24 @@
             gap: 4px;
         }
 
+        .leaderboard-status {
+            font-size: 0.75rem;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
         .leaderboard-status.online {
             color: #27ae60;
+        }
+
+        .leaderboard-status.in_room {
+            color: #f39c12;
+        }
+
+        .leaderboard-status.in_game {
+            color: #e74c3c;
         }
 
         .leaderboard-status.offline {
@@ -605,6 +621,16 @@
         .status-dot.online {
             background: #27ae60;
             box-shadow: 0 0 4px #27ae60;
+        }
+
+        .status-dot.in_room {
+            background: #f39c12;
+            box-shadow: 0 0 4px #f39c12;
+        }
+
+        .status-dot.in_game {
+            background: #e74c3c;
+            box-shadow: 0 0 4px #e74c3c;
         }
 
         .status-dot.offline {
@@ -1685,22 +1711,29 @@
                 const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
                 const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
                 const isCurrentUser = item.is_current_user === 1;
-                const isOnline = item.isOnline === 1;
+                
+                // 状态: offline | online | in_room | in_game
+                const status = item.status || 'offline';
                 
                 // 前三名特殊名字样式
                 const nameClass = rank === 1 ? 'rank-1-name' : rank === 2 ? 'rank-2-name' : rank === 3 ? 'rank-3-name' : '';
                 
-                // 在线状态
-                const statusClass = isOnline ? 'online' : 'offline';
-                const statusText = isOnline ? '在线' : '离线';
+                // 状态显示映射
+                const statusTextMap = {
+                    offline: '离线',
+                    online: '在线',
+                    in_room: '房间中',
+                    in_game: '游戏中'
+                };
+                const statusText = statusTextMap[status] || '离线';
                 
                 return `
                     <div class="leaderboard-item ${isCurrentUser ? 'current-user' : ''}">
                         <div class="rank-number ${rankClass}">${rankIcon}</div>
                         <div class="leaderboard-user-info">
                             <div class="leaderboard-username ${nameClass}">${escapeHtml(item.nickname || item.username)}</div>
-                            <div class="leaderboard-status ${statusClass}">
-                                <span class="status-dot ${statusClass}"></span>
+                            <div class="leaderboard-status ${status}">
+                                <span class="status-dot ${status}"></span>
                                 ${statusText}
                             </div>
                             ${isCurrentUser ? '<div class="leaderboard-user-tag">👤 你</div>' : ''}
@@ -1884,6 +1917,23 @@
         loadRooms();
         // 每5秒自动刷新
         setInterval(loadRooms, 5000);
+    </script>
+    
+    <!-- Socket.io 连接（用于在线状态） -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // 大厅页面 socket 连接（仅用于上报在线状态）
+        const lobbySocket = io(window.location.origin);
+        
+        lobbySocket.on('connect', () => {
+            console.log('Lobby socket connected:', lobbySocket.id);
+            // 通知服务器用户在大厅上线
+            lobbySocket.emit('user_online', { userId: user.id });
+        });
+        
+        lobbySocket.on('disconnect', () => {
+            console.log('Lobby socket disconnected');
+        });
     </script>
 </body>
 </html>

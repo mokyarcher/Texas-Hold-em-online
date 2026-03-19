@@ -668,7 +668,7 @@
 
             socket.on('connect', () => {
                 console.log('Connected to game server, socket id:', socket.id);
-                socket.emit('join_game', { roomId, userId: user.id, token });
+                socket.emit('join_room', { roomId, userId: user.id, token });
             });
 
             socket.on('connect_error', (error) => {

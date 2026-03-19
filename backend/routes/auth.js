@@ -118,13 +118,18 @@ router.get('/leaderboard', authMiddleware, async (req, res) => {
     const leaderboard = await userDB.getLeaderboard(currentUserId);
     
     // 获取在线用户集合
-    const onlineUsers = getOnlineUsers();
+    const onlineUsersMap = getOnlineUsers();
     
-    // 为每个用户添加在线状态
-    const leaderboardWithStatus = leaderboard.map(user => ({
-      ...user,
-      isOnline: onlineUsers.has(user.id) ? 1 : 0
-    }));
+    // 为每个用户添加状态信息
+    // status: 'offline' | 'online' | 'in_room' | 'in_game'
+    const leaderboardWithStatus = leaderboard.map(user => {
+      const onlineInfo = onlineUsersMap.get(user.id);
+      return {
+        ...user,
+        status: onlineInfo ? onlineInfo.status : 'offline',
+        isOnline: onlineInfo ? 1 : 0  // 兼容旧版本
+      };
+    });
     
     res.json(leaderboardWithStatus);
   } catch (error) {
