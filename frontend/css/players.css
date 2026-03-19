@@ -1,0 +1,294 @@
+/* ===== 玩家座位位置 ===== */
+.player-seat {
+    position: absolute;
+    width: 140px;
+    min-height: 100px;
+    transition: all 0.3s ease;
+}
+
+.player-seat.active {
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.6));
+}
+
+/* 座位位置分布 - 统一尺寸 */
+.seat-0 { bottom: 5%; left: 50%; transform: translateX(-50%); }
+.seat-1 { bottom: 20%; right: 5%; }
+.seat-2 { top: 40%; right: 5%; }
+.seat-3 { top: 10%; right: 20%; }
+.seat-4 { top: 10%; left: 20%; }
+.seat-5 { top: 40%; left: 5%; }
+.seat-6 { bottom: 20%; left: 5%; }
+
+/* ===== 玩家信息卡片 ===== */
+.player-card {
+    background: linear-gradient(145deg, rgba(30,30,30,0.95), rgba(10,10,10,0.98));
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    text-align: center;
+    position: relative;
+    backdrop-filter: blur(10px);
+}
+
+/* 位置标记 (BTN/SB/BB) */
+.player-position {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #1a1a1a;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+    display: none;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.player-position.show {
+    display: block !important;
+}
+
+.player-position.dealer { 
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+}
+
+.player-position.small-blind { 
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+}
+
+.player-position.big-blind { 
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+.player-name {
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    margin-top: 5px;
+}
+
+.player-chips {
+    color: #ffd700;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+/* 当前下注显示 */
+.player-current-bet {
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 4px;
+    padding: 2px 8px;
+    background: rgba(231, 76, 60, 0.8);
+    border-radius: 10px;
+    display: inline-block;
+    min-height: 18px;
+}
+
+.player-current-bet:empty {
+    display: none;
+}
+
+.player-status {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #e74c3c;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    display: none;
+}
+
+.player-status.dealer { background: #3498db; display: block; }
+.player-status.small-blind { background: #f39c12; display: block; }
+.player-status.big-blind { background: #e74c3c; display: block; }
+
+/* ===== 手牌区域 ===== */
+.player-hand {
+    position: absolute;
+    display: flex;
+    z-index: 5;
+}
+
+/* 手牌中的扑克牌重叠效果 */
+.player-hand .playing-card {
+    margin-right: -25px;
+}
+
+.player-hand .playing-card:last-child {
+    margin-right: 0;
+}
+
+/* ===== 手牌位置 - 统一规则 ===== */
+/* 底部玩家(seat-0,1,6): 手牌在信息框上方 */
+.seat-0 .player-hand { 
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+}
+
+.seat-1 .player-hand { 
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+}
+
+.seat-6 .player-hand { 
+    top: 50%;
+    left: 100%;
+    transform: translateY(-50%);
+    margin-left: 8px;
+}
+
+/* 顶部玩家(seat-3,4): 手牌在信息框下方 */
+.seat-3 .player-hand { 
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+}
+
+.seat-4 .player-hand { 
+    top: 50%;
+    left: 100%;
+    transform: translateY(-50%);
+    margin-left: 8px;
+}
+
+/* 左侧玩家(seat-5): 手牌在信息框右边 */
+.seat-5 .player-hand { 
+    top: 50%;
+    left: 100%;
+    transform: translateY(-50%);
+    margin-left: 8px;
+}
+
+/* 右侧玩家(seat-2): 手牌在信息框左边 */
+.seat-2 .player-hand { 
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+}
+
+/* ===== 下注闪动动画 ===== */
+.bet-flash {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5);
+    z-index: 20;
+    animation: betFlash 1.5s ease-out forwards;
+    white-space: nowrap;
+}
+
+@keyframes betFlash {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(10px) scale(0.8);
+    }
+    20% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1.1);
+    }
+    40% {
+        transform: translateX(-50%) translateY(-5px) scale(1);
+    }
+    80% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-20px);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-30px);
+    }
+}
+
+/* ===== 玩家状态 ===== */
+.folded {
+    opacity: 0.4;
+    filter: grayscale(100%);
+}
+
+.eliminated {
+    opacity: 0.2;
+    filter: grayscale(100%) brightness(0.5);
+    pointer-events: none;
+}
+
+.eliminated .player-card {
+    border: 1px solid #e74c3c;
+    background: linear-gradient(145deg, rgba(50,20,20,0.95), rgba(30,10,10,0.98));
+}
+
+.eliminated .player-name::after {
+    content: ' (已淘汰)';
+    color: #e74c3c;
+    font-size: 0.7rem;
+}
+
+.winner {
+    animation: winnerPulse 1s ease-in-out infinite;
+}
+
+@keyframes winnerPulse {
+    0%, 100% { 
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        border-color: #ffd700;
+    }
+    50% { 
+        box-shadow: 0 0 40px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 215, 0, 0.5);
+        border-color: #ffed4e;
+    }
+}
+
+/* ===== 聊天气泡 ===== */
+.chat-bubble {
+    position: absolute;
+    background: rgba(0,0,0,0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 20;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.chat-bubble.show {
+    opacity: 1;
+    animation: floatUp 2s ease-out forwards;
+}
+
+@keyframes floatUp {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-30px); opacity: 0; }
+}

@@ -1,0 +1,85 @@
+/* ===== 基础样式重置 ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0a0a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+}
+
+/* ===== 赌场背景 ===== */
+.casino-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(ellipse at 50% 50%, rgba(20, 60, 30, 0.9) 0%, rgba(5, 20, 10, 1) 100%),
+        repeating-linear-gradient(45deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 1px, transparent 1px, transparent 10px);
+    z-index: -2;
+}
+
+.casino-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(255, 215, 0, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 215, 0, 0.03) 0%, transparent 50%);
+}
+
+/* ===== 标题区域 ===== */
+.header {
+    text-align: center;
+    padding: 20px;
+    z-index: 10;
+}
+
+.title {
+    font-family: 'Crimson Pro', serif;
+    font-size: 2.5rem;
+    color: #ffd700;
+    text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3), 0 0 20px rgba(255, 215, 0, 0.2);
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: #888;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* ===== 主游戏容器 ===== */
+.game-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    aspect-ratio: 16/10;
+    margin: 20px auto;
+    perspective: 1000px;
+}
+
+/* ===== 响应式适配 ===== */
+@media (max-width: 968px) {
+    .game-container { aspect-ratio: 4/3; }
+    .playing-card { width: 50px; height: 70px; }
+    .community-cards .playing-card { width: 55px; height: 77px; }
+    .player-seat { width: 120px; height: 80px; }
+    .title { font-size: 1.8rem; }
+}

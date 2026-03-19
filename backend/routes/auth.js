@@ -1,0 +1,124 @@
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const { userDB } = require('../db/database');
+const { generateToken } = require('../middleware/auth');
+
+const router = express.Router();
+
+// 注册
+router.post('/register', async (req, res) => {
+  try {
+    const { username, password, nickname } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: '用户名和密码不能为空' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: '密码长度至少6个字符' });
+    }
+
+    // 检查用户名是否已存在
+    const existingUser = await userDB.findByUsername(username);
+    if (existingUser) {
+      return res.status(409).json({ error: '用户名已存在' });
+    }
+
+    // 加密密码
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 创建用户
+    const result = await userDB.createUser(username, hashedPassword, nickname, 1000);
+
+    // 生成 Token
+    const token = generateToken(result.lastID);
+
+    res.status(201).json({
+      message: '注册成功',
+      token,
+      user: {
+        id: result.lastID,
+        username,
+        nickname: nickname || username,
+        chips: 1000
+      }
+    });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ error: '服务器错误' });
+  }
+});
+
+// 登录
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: '用户名和密码不能为空' });
+    }
+
+    console.log(`Login attempt: ${username}`);
+
+    // 查找用户
+    const user = await userDB.findByUsername(username);
+    if (!user) {
+      console.log(`User not found: ${username}`);
+      return res.status(401).json({ error: '用户名或密码错误' });
+    }
+
+    console.log(`User found: ${user.username}, password length: ${user.password?.length}`);
+
+    // 验证密码
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    console.log(`Password valid: ${isValidPassword}`);
+
+    if (!isValidPassword) {
+      return res.status(401).json({ error: '用户名或密码错误' });
+    }
+
+    // 更新最后登录时间
+    await userDB.updateLastLogin(user.id);
+
+    // 生成 Token
+    const token = generateToken(user.id);
+
+    res.json({
+      message: '登录成功',
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        nickname: user.nickname,
+        chips: user.chips
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: '服务器错误' });
+  }
+});
+
+// 获取当前用户信息
+router.get('/me', async (req, res) => {
+  try {
+    const userId = req.userId;
+    const user = await userDB.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      nickname: user.nickname,
+      chips: user.chips
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: '服务器错误' });
+  }
+});
+
+module.exports = router;

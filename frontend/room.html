@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>德州扑克 - 房间</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a3d2a 0%, #0d2818 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .header {
+            background: rgba(0,0,0,0.3);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .room-info {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .room-name {
+            font-size: 1.3rem;
+            color: #ffd700;
+        }
+
+        .room-settings {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
+        }
+
+        .btn-leave {
+            padding: 10px 25px;
+            background: rgba(231, 76, 60, 0.8);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-leave:hover {
+            background: rgba(231, 76, 60, 1);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .seats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .seat {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .seat.empty {
+            border-style: dashed;
+        }
+
+        .seat.myself {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .seat.ready {
+            border-color: #27ae60;
+        }
+
+        .seat-host {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: #1a1a1a;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+
+        .seat-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .seat-avatar.empty-avatar {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.3);
+        }
+
+        .seat-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .seat-chips {
+            color: #ffd700;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .seat-status {
+            font-size: 0.8rem;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .seat-status.ready {
+            background: #27ae60;
+        }
+        
+        .seat-status.left {
+            background: #e74c3c;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .seat.left .seat-avatar {
+            background: #e74c3c;
+            opacity: 0.6;
+        }
+        
+        .seat.left .seat-name {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 15px 50px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-ready {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+
+        .btn-ready:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(39, 174, 96, 0.4);
+        }
+
+        .btn-ready.cancel {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #1a1a1a;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-start:disabled {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.3);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .waiting-tip {
+            text-align: center;
+            color: rgba(255,255,255,0.5);
+            margin-top: 20px;
+        }
+
+        .chat-box {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: rgba(0,0,0,0.3);
+            padding: 10px 15px;
+            font-size: 0.9rem;
+        }
+
+        .chat-messages {
+            height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: white;
+        }
+
+        .chat-input button {
+            padding: 8px 15px;
+            background: #3498db;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+        }
+
+        /* 游戏画面（开始游戏后显示） */
+        .game-area {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0d2818;
+        }
+
+        .game-area.active {
+            display: block;
+        }
+
+        .game-table {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 1000px;
+            aspect-ratio: 16/9;
+            background: radial-gradient(ellipse at center, #2d5a3d 0%, #1a3d2a 60%, #0d2818 100%);
+            border-radius: 50% / 40%;
+            border: 15px solid #2a1810;
+        }
+    </style>
+</head>
+<body>
+    <!-- 等待房间画面 -->
+    <div id="waitingArea">
+        <div class="header">
+            <div class="room-info">
+                <div class="room-name" id="roomName">加载中...</div>
+                <div class="room-settings" id="roomSettings">--</div>
+            </div>
+            <button class="btn-leave" onclick="leaveRoom()">离开房间</button>
+        </div>
+
+        <div class="container">
+            <div class="seats-grid" id="seatsGrid">
+                <!-- 座位将在这里动态生成 -->
+            </div>
+
+            <div class="actions" id="actionButtons">
+                <!-- 按钮将在这里动态生成 -->
+            </div>
+
+            <div class="waiting-tip" id="waitingTip">等待其他玩家加入...</div>
+        </div>
+    </div>
+
+    <!-- 游戏画面 -->
+    <div class="game-area" id="gameArea">
+        <div class="game-table">
+            <!-- 游戏画面将在这里渲染 -->
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const API_BASE = `${window.location.protocol}//${window.location.host}/api`;
+        const token = localStorage.getItem('poker_token');
+        const user = JSON.parse(localStorage.getItem('poker_user') || '{}');
+
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        // 获取URL参数
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('id');
+
+        if (!roomId) {
+            window.location.href = 'lobby.html';
+        }
+
+        let roomData = null;
+        let isHost = false;
+        let isReady = false;
+        let socket = null;
+
+        // 加载房间信息
+        async function loadRoom() {
+            try {
+                const response = await fetch(`${API_BASE}/rooms/${roomId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        alert('房间不存在');
+                        window.location.href = 'lobby.html';
+                        return;
+                    }
+                    throw new Error('加载失败');
+                }
+
+                const data = await response.json();
+                roomData = data.room;
+                isHost = roomData.host_id === user.id;
+
+                renderRoom();
+            } catch (error) {
+                console.error('Load room error:', error);
+            }
+        }
+
+        // 渲染房间
+        function renderRoom() {
+            document.getElementById('roomName').textContent = roomData.name;
+            document.getElementById('roomSettings').textContent = 
+                `盲注 ${roomData.small_blind}/${roomData.big_blind} | 最多 ${roomData.max_players} 人`;
+
+            // 渲染座位
+            const seatsGrid = document.getElementById('seatsGrid');
+            const players = roomData.players || [];
+            const maxPlayers = roomData.max_players;
+
+            let seatsHTML = '';
+            for (let i = 0; i < maxPlayers; i++) {
+                const player = players.find(p => p.seat_number === i);
+                const isMyself = player && player.user_id === user.id;
+                
+                if (player) {
+                    const isPlayerHost = player.user_id === roomData.host_id;
+                    const isPlayerReady = player.is_ready;
+                    
+                    seatsHTML += `
+                        <div class="seat ${isMyself ? 'myself' : ''} ${isPlayerReady ? 'ready' : ''}">
+                            ${isPlayerHost ? '<div class="seat-host">房主</div>' : ''}
+                            <div class="seat-avatar">${player.username.charAt(0).toUpperCase()}</div>
+                            <div class="seat-name">${escapeHtml(player.nickname || player.username)}</div>
+                            <div class="seat-status ${isPlayerReady ? 'ready' : ''}">
+                                ${isPlayerReady ? '已准备' : '等待中'}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    seatsHTML += `
+                        <div class="seat empty">
+                            <div class="seat-avatar empty-avatar">?</div>
+                            <div class="seat-status">空座位</div>
+                        </div>
+                    `;
+                }
+            }
+            seatsGrid.innerHTML = seatsHTML;
+
+            // 渲染按钮
+            renderButtons(players);
+        }
+
+        // 渲染操作按钮
+        function renderButtons(players) {
+            const container = document.getElementById('actionButtons');
+            const myPlayer = players.find(p => p.user_id === user.id);
+            isReady = myPlayer ? myPlayer.is_ready : false;
+
+            if (isHost) {
+                // 房主显示开始游戏按钮
+                const allReady = players.every(p => p.user_id === user.id || p.is_ready);
+                const enoughPlayers = players.length >= 2;
+                
+                container.innerHTML = `
+                    <button class="btn btn-start" 
+                            onclick="startGame()" 
+                            ${!allReady || !enoughPlayers ? 'disabled' : ''}>
+                        ${!enoughPlayers ? '至少需要2人' : !allReady ? '等待玩家准备' : '开始游戏'}
+                    </button>
+                `;
+                document.getElementById('waitingTip').textContent = 
+                    enoughPlayers && allReady ? '可以开始游戏了！' : '等待玩家准备...';
+            } else {
+                // 普通玩家显示准备按钮
+                container.innerHTML = `
+                    <button class="btn btn-ready ${isReady ? 'cancel' : ''}" onclick="toggleReady()">
+                        ${isReady ? '取消准备' : '准备'}
+                    </button>
+                `;
+                document.getElementById('waitingTip').textContent = 
+                    isReady ? '等待房主开始游戏...' : '点击准备按钮开始游戏';
+            }
+        }
+
+        // 切换准备状态
+        async function toggleReady() {
+            try {
+                const response = await fetch(`${API_BASE}/rooms/${roomId}/ready`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ isReady: !isReady })
+                });
+
+                if (response.ok) {
+                    loadRoom();
+                }
+            } catch (error) {
+                console.error('Toggle ready error:', error);
+            }
+        }
+
+        // 连接游戏 WebSocket（提前连接，等待游戏开始）
+        function connectGameSocket() {
+            if (socket) return;
+            
+            console.log('Connecting to socket server:', window.location.origin);
+            socket = io(window.location.origin);
+
+            socket.on('connect', () => {
+                console.log('Connected to game server, socket id:', socket.id);
+                socket.emit('join_game', { roomId, userId: user.id, token });
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Socket connection error:', error);
+                alert('连接游戏服务器失败，请刷新页面重试');
+            });
+
+            socket.on('disconnect', (reason) => {
+                console.log('Socket disconnected:', reason);
+            });
+
+            // 游戏开始，跳转到游戏页面
+            socket.on('game_started', (data) => {
+                console.log('Game started, redirecting to:', data.redirect);
+                // 标记为正常跳转，不是掉线
+                socket.isNavigating = true;
+                window.location.href = data.redirect || `game.html?id=${roomId}`;
+            });
+
+            // 玩家离开房间
+            socket.on('player_left', (data) => {
+                console.log('Player left:', data);
+                showToast(data.message, 'warning');
+                // 刷新房间信息
+                loadRoom();
+            });
+
+            // 房主变更
+            socket.on('host_changed', (data) => {
+                console.log('Host changed:', data);
+                showToast(`房主变更为 ${data.newHostName}`, 'info');
+                loadRoom();
+            });
+
+            // 玩家断开连接（掉线）
+            socket.on('player_offline', (data) => {
+                console.log('Player offline:', data);
+                showToast('有玩家断开连接', 'warning');
+            });
+
+            socket.on('error', (data) => {
+                console.error('Server error:', data);
+                alert(data.message);
+            });
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            let bgColor = '#3498db';
+            if (type === 'warning') bgColor = '#e74c3c';
+            if (type === 'success') bgColor = '#27ae60';
+            toast.style.cssText = `
+                position: fixed;
+                top: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: ${bgColor};
+                color: white;
+                padding: 12px 25px;
+                border-radius: 25px;
+                z-index: 1000;
+                animation: slideDown 0.3s ease;
+                font-size: 0.95rem;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // 页面加载时连接 WebSocket
+        connectGameSocket();
+
+        // 开始游戏（房主）
+        async function startGame() {
+            try {
+                const response = await fetch(`${API_BASE}/rooms/${roomId}/start`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // 通知服务器开始游戏
+                    socket.emit('start_game', { roomId });
+                } else {
+                    alert(data.error || '开始游戏失败');
+                }
+            } catch (error) {
+                console.error('Start game error:', error);
+            }
+        }
+
+        // 离开房间
+        async function leaveRoom() {
+            if (!confirm('确定要离开房间吗？')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/rooms/${roomId}/leave`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (data.message && data.message.includes('解散')) {
+                    alert('房间已解散');
+                }
+
+                window.location.href = 'lobby.html';
+            } catch (error) {
+                console.error('Leave room error:', error);
+                window.location.href = 'lobby.html';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 初始加载
+        loadRoom();
+        // 每2秒刷新
+        setInterval(loadRoom, 2000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+/* ===== 扑克牌样式 - 3D效果 ===== */
+.playing-card {
+    width: 60px;
+    height: 84px;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+    border-radius: 8px;
+    position: relative;
+    box-shadow: 
+        0 2px 8px rgba(0,0,0,0.3),
+        0 0 0 1px rgba(0,0,0,0.1);
+    transform-style: preserve-3d;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.playing-card:hover {
+    transform: translateY(-10px) rotateY(5deg);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    z-index: 10;
+}
+
+/* 牌背 */
+.playing-card.hidden {
+    background: linear-gradient(135deg, #b91d3a 0%, #8b1538 50%, #b91d3a 100%);
+    background-image: 
+        repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px),
+        linear-gradient(135deg, #b91d3a 0%, #8b1538 100%);
+    border: 2px solid #fff;
+}
+
+.playing-card.hidden::before {
+    content: '♠';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    color: rgba(255,255,255,0.8);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* 牌面内容 */
+.card-corner {
+    position: absolute;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 4px;
+}
+
+.card-corner.top-left { top: 4px; left: 4px; }
+.card-corner.bottom-right { 
+    bottom: 4px; 
+    right: 4px; 
+    transform: rotate(180deg); 
+}
+
+.card-suit {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.card-suit.hearts, .card-suit.diamonds { color: #d40000; }
+.card-suit.spades, .card-suit.clubs { color: #000; }
+
+/* 发牌动画 */
+@keyframes dealCard {
+    0% { 
+        opacity: 0; 
+        transform: translateY(-50px) rotateY(90deg); 
+    }
+    100% { 
+        opacity: 1; 
+        transform: translateY(0) rotateY(0); 
+    }
+}

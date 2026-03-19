@@ -1,0 +1,51 @@
+/* ===== 动画效果 ===== */
+
+/* 脉冲动画 */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* 发光动画 */
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4); }
+}
+
+.glow {
+    animation: glow 2s infinite;
+}
+
+/* 发牌动画（已在cards.css定义，这里保留通用动画） */
+@keyframes dealCard {
+    0% { 
+        opacity: 0; 
+        transform: translateY(-50px) rotateY(90deg); 
+    }
+    100% { 
+        opacity: 1; 
+        transform: translateY(0) rotateY(0); 
+    }
+}
+
+/* 获胜脉冲（已在players.css定义） */
+@keyframes winnerPulse {
+    0%, 100% { 
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        border-color: #ffd700;
+    }
+    50% { 
+        box-shadow: 0 0 40px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 215, 0, 0.5);
+        border-color: #ffed4e;
+    }
+}
+
+/* 聊天气泡浮动（已在players.css定义） */
+@keyframes floatUp {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-30px); opacity: 0; }
+}

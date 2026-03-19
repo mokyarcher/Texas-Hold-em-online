@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>德州扑克 - 游戏大厅</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a3d2a 0%, #0d2818 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .header {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .chips {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .btn-logout {
+            padding: 8px 20px;
+            background: rgba(231, 76, 60, 0.8);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-logout:hover {
+            background: rgba(231, 76, 60, 1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .btn-primary {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            border: none;
+            border-radius: 8px;
+            color: #1a1a1a;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-secondary {
+            padding: 15px 30px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .room-list {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .room-list-header {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 2fr 0.8fr 0.8fr 0.6fr 0.6fr 170px;
+            gap: 10px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .room-item {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 2fr 0.8fr 0.8fr 0.6fr 0.6fr 170px;
+            gap: 10px;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s;
+        }
+
+        .room-item:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .room-name {
+            font-weight: 600;
+        }
+
+        .room-host {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
+        }
+
+        .btn-join {
+            padding: 8px 20px;
+            background: #27ae60;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-join:hover {
+            background: #2ecc71;
+        }
+
+        .btn-join:disabled {
+            background: rgba(255,255,255,0.1);
+            cursor: not-allowed;
+        }
+
+        .btn-delete {
+            padding: 8px 20px;
+            background: #e74c3c;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.85rem;
+            min-width: 80px;
+        }
+
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+        
+        .btn-join {
+            min-width: 80px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* 创建房间弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, rgba(30,30,30,0.95), rgba(10,10,10,0.98));
+            padding: 30px;
+            border-radius: 12px;
+            width: 400px;
+            max-width: 90%;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .modal-header {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #ffd700;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #ffd700;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-cancel {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .password-input {
+            display: none;
+        }
+
+        .password-input.show {
+            display: block;
+        }
+        
+        .room-item.playing {
+            background: rgba(255, 215, 0, 0.1);
+            border-left: 4px solid #ffd700;
+        }
+        
+        .room-item.playing:hover {
+            background: rgba(255, 215, 0, 0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">♠ 德州扑克</div>
+        <div class="user-info">
+            <span id="username">加载中...</span>
+            <span class="chips">💰 <span id="chips">0</span></span>
+            <button class="btn-logout" onclick="logout()">退出</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="actions">
+            <button class="btn-primary" onclick="showCreateModal()">创建房间</button>
+            <button class="btn-secondary" onclick="refreshRooms()">刷新列表</button>
+        </div>
+
+        <div class="room-list">
+            <div class="room-list-header">
+                <div>房间名称</div>
+                <div>房主</div>
+                <div>盲注</div>
+                <div>人数</div>
+                <div>状态</div>
+                <div>操作</div>
+            </div>
+            <div id="roomList">
+                <div class="empty-state">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建房间弹窗 -->
+    <div class="modal" id="createModal">
+        <div class="modal-content">
+            <div class="modal-header">创建房间</div>
+            <form id="createRoomForm">
+                <div class="form-group">
+                    <label>房间名称</label>
+                    <input type="text" id="roomName" placeholder="输入房间名称" required>
+                </div>
+                <div class="form-group">
+                    <label>最大人数</label>
+                    <select id="maxPlayers">
+                        <option value="2">2人</option>
+                        <option value="3">3人</option>
+                        <option value="4">4人</option>
+                        <option value="5">5人</option>
+                        <option value="6" selected>6人</option>
+                        <option value="7">7人</option>
+                        <option value="8">8人</option>
+                        <option value="9">9人</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>盲注设置</label>
+                    <select id="blindSetting">
+                        <option value="5,10">小盲 5 / 大盲 10</option>
+                        <option value="10,20" selected>小盲 10 / 大盲 20</option>
+                        <option value="25,50">小盲 25 / 大盲 50</option>
+                        <option value="50,100">小盲 50 / 大盲 100</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="hasPassword" onchange="togglePassword()"> 设置密码
+                    </label>
+                </div>
+                <div class="form-group password-input" id="passwordGroup">
+                    <label>房间密码</label>
+                    <input type="password" id="roomPassword" placeholder="输入密码">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="hideCreateModal()">取消</button>
+                    <button type="submit" class="btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 加入房间弹窗 -->
+    <div class="modal" id="joinModal">
+        <div class="modal-content">
+            <div class="modal-header">加入房间</div>
+            <form id="joinRoomForm">
+                <div class="form-group">
+                    <label>房间密码</label>
+                    <input type="password" id="joinPassword" placeholder="如无密码请留空">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="hideJoinModal()">取消</button>
+                    <button type="submit" class="btn-primary">加入</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = `${window.location.protocol}//${window.location.host}/api`;
+        let currentRoomId = null;
+
+        // 检查登录状态
+        const token = localStorage.getItem('poker_token');
+        const user = JSON.parse(localStorage.getItem('poker_user') || '{}');
+
+        if (!token) {
+            window.location.href = 'login.html';
+        } else {
+            document.getElementById('username').textContent = user.nickname || user.username;
+            document.getElementById('chips').textContent = user.chips || 0;
+        }
+
+        // 加载房间列表
+        async function loadRooms() {
+            try {
+                const response = await fetch(`${API_BASE}/rooms/list`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        logout();
+                        return;
+                    }
+                    throw new Error('加载失败');
+                }
+
+                const rooms = await response.json();
+                renderRooms(rooms);
+            } catch (error) {
+                console.error('Load rooms error:', error);
+                document.getElementById('roomList').innerHTML = 
+                    '<div class="empty-state">加载失败，请稍后重试</div>';
+            }
+        }
+
+        // 渲染房间列表
+        function renderRooms(rooms) {
+            const container = document.getElementById('roomList');
+            
+            if (rooms.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无房间，创建一个吧！</div>';
+                return;
+            }
+
+            container.innerHTML = rooms.map(room => {
+                const isPlaying = room.status === 'playing';
+                const isMyRoom = room.is_my_room === 1;
+                const isHost = room.host_id === user.id;
+                
+                // 如果是进行中的游戏且玩家自己在里面
+                if (isPlaying && isMyRoom) {
+                    return `
+                        <div class="room-item playing">
+                            <div>
+                                <div class="room-name">${escapeHtml(room.name)} ${room.password ? '🔒' : ''}</div>
+                                <div style="color: #ffd700; font-size: 0.8rem;">🎮 你正在游戏中</div>
+                            </div>
+                            <div class="room-host">${escapeHtml(room.host_name)}</div>
+                            <div>${room.small_blind}/${room.big_blind}</div>
+                            <div>${room.player_count}/${room.max_players}</div>
+                            <div style="color: #e74c3c;">游戏中</div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-join" style="background: #27ae60;" onclick="reconnectGame('${room.id}')">
+                                    重连游戏
+                                </button>
+                                ${isHost ? `<button class="btn-delete" onclick="deleteRoom('${room.id}')">删除</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 普通等待中的房间
+                return `
+                    <div class="room-item">
+                        <div>
+                            <div class="room-name">${escapeHtml(room.name)} ${room.password ? '🔒' : ''}</div>
+                            ${isHost ? '<div style="color: #ffd700; font-size: 0.8rem;">👑 你是房主</div>' : ''}
+                        </div>
+                        <div class="room-host">${escapeHtml(room.host_name)}</div>
+                        <div>${room.small_blind}/${room.big_blind}</div>
+                        <div>${room.player_count}/${room.max_players}</div>
+                        <div>${isPlaying ? '<span style="color: #e74c3c;">游戏中</span>' : '等待中'}</div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-join" 
+                                onclick="joinRoom('${room.id}', ${room.password ? 'true' : 'false'})"
+                                ${room.player_count >= room.max_players || isPlaying ? 'disabled' : ''}>
+                                ${room.player_count >= room.max_players ? '已满' : isPlaying ? '游戏中' : '加入'}
+                            </button>
+                            ${isHost ? `<button class="btn-delete" onclick="deleteRoom('${room.id}')">删除</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 删除房间（房主专用）
+        async function deleteRoom(roomId) {
+            if (!confirm('确定要删除这个房间吗？房间内的所有玩家都会被踢出。')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/rooms/${roomId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('房间已删除');
+                    loadRooms();
+                } else {
+                    alert(data.error || '删除失败');
+                }
+            } catch (error) {
+                console.error('Delete room error:', error);
+                alert('网络错误');
+            }
+        }
+
+        // 重连游戏
+        function reconnectGame(roomId) {
+            if (confirm('你有一个正在进行的游戏，是否重连？')) {
+                window.location.href = `game.html?id=${roomId}`;
+            }
+        }
+
+        // 创建房间
+        document.getElementById('createRoomForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('roomName').value;
+            const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
+            const blindSetting = document.getElementById('blindSetting').value.split(',');
+            const hasPassword = document.getElementById('hasPassword').checked;
+            const password = hasPassword ? document.getElementById('roomPassword').value : '';
+
+            try {
+                const response = await fetch(`${API_BASE}/rooms/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name,
+                        maxPlayers,
+                        smallBlind: parseInt(blindSetting[0]),
+                        bigBlind: parseInt(blindSetting[1]),
+                        password: password || undefined
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // 跳转到房间页面
+                    window.location.href = `room.html?id=${data.room.id}`;
+                } else {
+                    alert(data.error || '创建失败');
+                }
+            } catch (error) {
+                console.error('Create room error:', error);
+                alert('网络错误');
+            }
+        });
+
+        // 加入房间
+        async function joinRoom(roomId, needPassword) {
+            currentRoomId = roomId;
+
+            if (needPassword) {
+                document.getElementById('joinModal').classList.add('show');
+            } else {
+                doJoinRoom(roomId, '');
+            }
+        }
+
+        document.getElementById('joinRoomForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('joinPassword').value;
+            doJoinRoom(currentRoomId, password);
+        });
+
+        async function doJoinRoom(roomId, password) {
+            try {
+                const response = await fetch(`${API_BASE}/rooms/${roomId}/join`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.location.href = `room.html?id=${roomId}`;
+                } else {
+                    alert(data.error || '加入失败');
+                }
+            } catch (error) {
+                console.error('Join room error:', error);
+                alert('网络错误');
+            }
+        }
+
+        // 显示/隐藏弹窗
+        function showCreateModal() {
+            document.getElementById('createModal').classList.add('show');
+        }
+
+        function hideCreateModal() {
+            document.getElementById('createModal').classList.remove('show');
+        }
+
+        function hideJoinModal() {
+            document.getElementById('joinModal').classList.remove('show');
+        }
+
+        function togglePassword() {
+            document.getElementById('passwordGroup').classList.toggle('show');
+        }
+
+        function refreshRooms() {
+            loadRooms();
+        }
+
+        function logout() {
+            localStorage.removeItem('poker_token');
+            localStorage.removeItem('poker_user');
+            localStorage.removeItem('is_guest');
+            window.location.href = 'login.html';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 初始加载
+        loadRooms();
+        // 每5秒自动刷新
+        setInterval(loadRooms, 5000);
+    </script>
+</body>
+</html>
