@@ -27,12 +27,15 @@
   - 修改昵称功能（最多20字符）
   - 修改密码功能（需验证当前密码）
   - 在大厅页面头部添加"👤 个人信息"按钮
+- **UI设计**: 
+  - 横屏左右分栏布局，左侧显示信息，右侧修改
+  - 弹窗宽度700px，带用户头像区域
 - **修改文件**:
   - `backend/routes/auth.js`: 添加 `/auth/update-nickname` 和 `/auth/update-password` 接口
   - `backend/db/database.js`: 添加 `findByIdWithPassword`, `updateNickname`, `updatePassword` 方法
   - `frontend/lobby.html`: 添加个人信息弹窗和相关交互
 - **状态**: ✅ 已完成
-- **提交**: `e6f119f`
+- **提交**: `e6f119f`, `4ebb2d7`
 
 ### 2026-03-19 - 富豪排行榜功能
 - **操作**: 添加排行榜功能
