@@ -544,6 +544,35 @@
             font-size: 1.1rem;
         }
 
+        /* 前三名渐变色名字 */
+        .leaderboard-username.rank-1-name {
+            background: linear-gradient(135deg, #ffd700, #ffed4e, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .leaderboard-username.rank-2-name {
+            background: linear-gradient(135deg, #9b59b6, #e74c3c, #9b59b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+            font-size: 1.15rem;
+        }
+
+        .leaderboard-username.rank-3-name {
+            background: linear-gradient(135deg, #ff69b4, #ff1493, #ff69b4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
         .leaderboard-user-tag {
             font-size: 0.75rem;
             color: #f39c12;
@@ -1413,11 +1442,14 @@
                 const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
                 const isCurrentUser = item.is_current_user === 1;
                 
+                // 前三名特殊名字样式
+                const nameClass = rank === 1 ? 'rank-1-name' : rank === 2 ? 'rank-2-name' : rank === 3 ? 'rank-3-name' : '';
+                
                 return `
                     <div class="leaderboard-item ${isCurrentUser ? 'current-user' : ''}">
                         <div class="rank-number ${rankClass}">${rankIcon}</div>
                         <div class="leaderboard-user-info">
-                            <div class="leaderboard-username">${escapeHtml(item.nickname || item.username)}</div>
+                            <div class="leaderboard-username ${nameClass}">${escapeHtml(item.nickname || item.username)}</div>
                             ${isCurrentUser ? '<div class="leaderboard-user-tag">👤 你</div>' : ''}
                         </div>
                         <div class="leaderboard-chips">💰 ${item.chips || 0}</div>
