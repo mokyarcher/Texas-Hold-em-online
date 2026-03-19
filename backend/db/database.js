@@ -22,7 +22,7 @@ function initDatabase() {
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       nickname TEXT,
-      chips INTEGER DEFAULT 1000,
+      chips INTEGER DEFAULT 20000,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       last_login DATETIME
     )
@@ -97,7 +97,7 @@ function dbRun(sql, params = []) {
 // 用户相关数据库操作
 const userDB = {
   // 创建用户
-  async createUser(username, password, nickname, chips = 1000) {
+  async createUser(username, password, nickname, chips = 20000) {
     return dbRun(
       'INSERT INTO users (username, password, nickname, chips) VALUES (?, ?, ?, ?)',
       [username, password, nickname || username, chips]

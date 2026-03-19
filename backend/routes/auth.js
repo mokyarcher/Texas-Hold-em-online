@@ -28,7 +28,7 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 创建用户
-    const result = await userDB.createUser(username, hashedPassword, nickname, 1000);
+    const result = await userDB.createUser(username, hashedPassword, nickname, 20000);
 
     // 生成 Token
     const token = generateToken(result.lastID);
@@ -40,7 +40,7 @@ router.post('/register', async (req, res) => {
         id: result.lastID,
         username,
         nickname: nickname || username,
-        chips: 1000
+        chips: 20000
       }
     });
   } catch (error) {
