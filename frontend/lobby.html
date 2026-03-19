@@ -102,6 +102,40 @@
             background: rgba(255,255,255,0.2);
         }
 
+        .btn-admin {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-admin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-rank {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-rank:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(243, 156, 18, 0.4);
+        }
+
         .room-list {
             background: rgba(0,0,0,0.2);
             border-radius: 12px;
@@ -282,6 +316,228 @@
         .room-item.playing:hover {
             background: rgba(255, 215, 0, 0.15);
         }
+
+        /* 后台管理弹窗样式 */
+        .admin-modal-content {
+            background: linear-gradient(145deg, rgba(30,30,30,0.98), rgba(10,10,10,0.99));
+            padding: 30px;
+            border-radius: 12px;
+            width: 800px;
+            max-width: 95%;
+            border: 1px solid rgba(255,255,255,0.1);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .admin-header {
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            color: #e74c3c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+        }
+
+        .admin-section-title {
+            font-size: 1.1rem;
+            color: #ffd700;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .user-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .user-item {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 150px;
+            gap: 10px;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            align-items: center;
+        }
+
+        .user-item:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .user-name {
+            font-weight: 500;
+        }
+
+        .user-chips {
+            color: #ffd700;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+
+        .btn-edit {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #2980b9;
+        }
+
+        .btn-delete-small {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-delete-small:hover {
+            background: #c0392b;
+        }
+
+        .btn-danger {
+            padding: 12px 25px;
+            background: #e74c3c;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .chips-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .chips-input input, .chips-input select {
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            color: white;
+        }
+
+        .chips-input input {
+            width: 100px;
+        }
+
+        .btn-close {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* 排行榜弹窗样式 */
+        .leaderboard-modal-content {
+            background: linear-gradient(145deg, rgba(30,30,30,0.98), rgba(10,10,10,0.99));
+            padding: 30px;
+            border-radius: 12px;
+            width: 500px;
+            max-width: 95%;
+            border: 1px solid rgba(255,255,255,0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .leaderboard-header {
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            color: #f39c12;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .leaderboard-item {
+            display: grid;
+            grid-template-columns: 50px 1fr 100px;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .leaderboard-item:hover {
+            background: rgba(255,255,255,0.06);
+        }
+
+        .leaderboard-item.current-user {
+            background: rgba(243, 156, 18, 0.15);
+            border: 1px solid rgba(243, 156, 18, 0.3);
+        }
+
+        .rank-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .rank-1 { color: #ffd700; } /* 金牌 */
+        .rank-2 { color: #c0c0c0; } /* 银牌 */
+        .rank-3 { color: #cd7f32; } /* 铜牌 */
+        .rank-other { color: rgba(255,255,255,0.5); }
+
+        .leaderboard-user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .leaderboard-username {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .leaderboard-user-tag {
+            font-size: 0.75rem;
+            color: #f39c12;
+            margin-top: 2px;
+        }
+
+        .leaderboard-chips {
+            text-align: right;
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .leaderboard-empty {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255,255,255,0.5);
+        }
     </style>
 </head>
 <body>
@@ -298,6 +554,8 @@
         <div class="actions">
             <button class="btn-primary" onclick="showCreateModal()">创建房间</button>
             <button class="btn-secondary" onclick="refreshRooms()">刷新列表</button>
+            <button class="btn-rank" onclick="showLeaderboardModal()">🏆 排行榜</button>
+            <button class="btn-admin" id="adminBtn" style="display: none;" onclick="showAdminModal()">⚙️ 后台管理</button>
         </div>
 
         <div class="room-list">
@@ -380,6 +638,70 @@
         </div>
     </div>
 
+    <!-- 排行榜弹窗 -->
+    <div class="modal" id="leaderboardModal">
+        <div class="leaderboard-modal-content">
+            <div class="leaderboard-header">
+                <span>🏆 富豪排行榜</span>
+                <button class="btn-close" onclick="hideLeaderboardModal()">关闭</button>
+            </div>
+            <div class="leaderboard-list" id="leaderboardList">
+                <div class="leaderboard-empty">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 后台管理弹窗 -->
+    <div class="modal" id="adminModal">
+        <div class="admin-modal-content">
+            <div class="admin-header">
+                <span>⚙️ 后台管理</span>
+                <button class="btn-close" onclick="hideAdminModal()">关闭</button>
+            </div>
+            
+            <!-- 用户管理 -->
+            <div class="admin-section">
+                <div class="admin-section-title">👥 用户管理</div>
+                <div class="user-list" id="adminUserList">
+                    <div class="empty-state">加载中...</div>
+                </div>
+            </div>
+
+            <!-- 房间管理 -->
+            <div class="admin-section">
+                <div class="admin-section-title">🏠 房间管理</div>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <span>一键清除所有房间（危险操作）</span>
+                    <button class="btn-danger" onclick="clearAllRooms()">🗑️ 清除所有房间</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改筹码弹窗 -->
+    <div class="modal" id="chipsModal">
+        <div class="modal-content">
+            <div class="modal-header">💰 修改用户筹码</div>
+            <div id="chipsModalUserInfo" style="margin-bottom: 15px; color: rgba(255,255,255,0.8);"></div>
+            <div class="form-group">
+                <label>操作类型</label>
+                <select id="chipsOperation">
+                    <option value="add">增加筹码</option>
+                    <option value="subtract">减少筹码</option>
+                    <option value="set">设置为</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>金额</label>
+                <input type="number" id="chipsAmount" placeholder="输入金额" min="0">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="hideChipsModal()">取消</button>
+                <button type="button" class="btn-primary" onclick="saveChips()">确认</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = `${window.location.protocol}//${window.location.host}/api`;
         let currentRoomId = null;
@@ -387,12 +709,18 @@
         // 检查登录状态
         const token = localStorage.getItem('poker_token');
         const user = JSON.parse(localStorage.getItem('poker_user') || '{}');
+        let currentEditUserId = null;
 
         if (!token) {
             window.location.href = 'login.html';
         } else {
             document.getElementById('username').textContent = user.nickname || user.username;
             document.getElementById('chips').textContent = user.chips || 0;
+            
+            // 如果是超管，显示后台管理按钮
+            if (user.isAdmin) {
+                document.getElementById('adminBtn').style.display = 'block';
+            }
         }
 
         // 加载房间列表
@@ -625,6 +953,238 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // ==================== 排行榜功能 ====================
+        
+        // 显示排行榜弹窗
+        async function showLeaderboardModal() {
+            document.getElementById('leaderboardModal').classList.add('show');
+            await loadLeaderboard();
+        }
+
+        // 隐藏排行榜弹窗
+        function hideLeaderboardModal() {
+            document.getElementById('leaderboardModal').classList.remove('show');
+        }
+
+        // 加载排行榜
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/leaderboard`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error('加载失败');
+                }
+
+                const leaderboard = await response.json();
+                renderLeaderboard(leaderboard);
+            } catch (error) {
+                console.error('Load leaderboard error:', error);
+                document.getElementById('leaderboardList').innerHTML = 
+                    '<div class="leaderboard-empty">加载失败，请稍后重试</div>';
+            }
+        }
+
+        // 渲染排行榜
+        function renderLeaderboard(leaderboard) {
+            const container = document.getElementById('leaderboardList');
+            
+            if (leaderboard.length === 0) {
+                container.innerHTML = '<div class="leaderboard-empty">暂无数据</div>';
+                return;
+            }
+
+            container.innerHTML = leaderboard.map((item, index) => {
+                const rank = index + 1;
+                const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+                const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                const isCurrentUser = item.is_current_user === 1;
+                
+                return `
+                    <div class="leaderboard-item ${isCurrentUser ? 'current-user' : ''}">
+                        <div class="rank-number ${rankClass}">${rankIcon}</div>
+                        <div class="leaderboard-user-info">
+                            <div class="leaderboard-username">${escapeHtml(item.nickname || item.username)}</div>
+                            ${isCurrentUser ? '<div class="leaderboard-user-tag">👤 你</div>' : ''}
+                        </div>
+                        <div class="leaderboard-chips">💰 ${item.chips || 0}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== 后台管理功能 ====================
+        
+        // 显示后台管理弹窗
+        async function showAdminModal() {
+            document.getElementById('adminModal').classList.add('show');
+            await loadAdminUserList();
+        }
+
+        // 隐藏后台管理弹窗
+        function hideAdminModal() {
+            document.getElementById('adminModal').classList.remove('show');
+        }
+
+        // 加载用户列表（超管用）
+        async function loadAdminUserList() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/users`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error('加载失败');
+                }
+
+                const users = await response.json();
+                renderAdminUserList(users);
+            } catch (error) {
+                console.error('Load admin users error:', error);
+                document.getElementById('adminUserList').innerHTML = 
+                    '<div class="empty-state">加载失败，请刷新重试</div>';
+            }
+        }
+
+        // 渲染用户列表
+        function renderAdminUserList(users) {
+            const container = document.getElementById('adminUserList');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无用户</div>';
+                return;
+            }
+
+            container.innerHTML = users.map(u => {
+                const isSelf = u.id === user.id;
+                return `
+                    <div class="user-item">
+                        <div class="user-name">
+                            ${escapeHtml(u.nickname || u.username)}
+                            ${isSelf ? '<span style="color: #e74c3c;"> (你)</span>' : ''}
+                        </div>
+                        <div class="user-chips">💰 ${u.chips || 0}</div>
+                        <div style="color: rgba(255,255,255,0.5); font-size: 0.85rem;">
+                            ${new Date(u.created_at).toLocaleDateString()}
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-small btn-edit" onclick="showChipsModal(${u.id}, '${escapeHtml(u.nickname || u.username)}', ${u.chips || 0})" ${isSelf ? 'disabled' : ''}>
+                                筹码
+                            </button>
+                            <button class="btn-small btn-delete-small" onclick="deleteUser(${u.id}, '${escapeHtml(u.nickname || u.username)}')" ${isSelf ? 'disabled' : ''}>
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 显示修改筹码弹窗
+        function showChipsModal(userId, nickname, currentChips) {
+            currentEditUserId = userId;
+            document.getElementById('chipsModalUserInfo').innerHTML = 
+                `用户：<strong>${nickname}</strong> | 当前筹码：<span style="color: #ffd700;">${currentChips}</span>`;
+            document.getElementById('chipsAmount').value = '';
+            document.getElementById('chipsModal').classList.add('show');
+        }
+
+        // 隐藏修改筹码弹窗
+        function hideChipsModal() {
+            document.getElementById('chipsModal').classList.remove('show');
+            currentEditUserId = null;
+        }
+
+        // 保存筹码修改
+        async function saveChips() {
+            if (!currentEditUserId) return;
+            
+            const operation = document.getElementById('chipsOperation').value;
+            const amount = parseInt(document.getElementById('chipsAmount').value);
+            
+            if (isNaN(amount) || amount < 0) {
+                alert('请输入有效的金额');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users/${currentEditUserId}/chips`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ operation, amount })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`筹码修改成功！\n${data.user.username}: ${data.user.oldChips} → ${data.user.newChips}`);
+                    hideChipsModal();
+                    loadAdminUserList(); // 刷新列表
+                } else {
+                    alert(data.error || '修改失败');
+                }
+            } catch (error) {
+                console.error('Update chips error:', error);
+                alert('网络错误');
+            }
+        }
+
+        // 删除用户
+        async function deleteUser(userId, nickname) {
+            if (!confirm(`确定要删除用户 "${nickname}" 吗？\n此操作不可恢复！`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('用户已删除');
+                    loadAdminUserList(); // 刷新列表
+                } else {
+                    alert(data.error || '删除失败');
+                }
+            } catch (error) {
+                console.error('Delete user error:', error);
+                alert('网络错误');
+            }
+        }
+
+        // 清除所有房间
+        async function clearAllRooms() {
+            if (!confirm('⚠️ 警告！\n\n确定要清除所有房间吗？\n此操作会解散所有正在进行的游戏！\n\n此操作不可恢复！')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/rooms/all`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`所有房间已清除！\n共删除 ${data.deletedCount} 个房间`);
+                    loadRooms(); // 刷新房间列表
+                } else {
+                    alert(data.error || '清除失败');
+                }
+            } catch (error) {
+                console.error('Clear all rooms error:', error);
+                alert('网络错误');
+            }
         }
 
         // 初始加载

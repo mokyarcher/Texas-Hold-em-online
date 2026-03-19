@@ -1,9 +1,12 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { userDB } = require('../db/database');
-const { generateToken } = require('../middleware/auth');
+const { generateToken, authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
+
+// 超管用户名
+const ADMIN_USERNAME = 'mokyarcher';
 
 // 注册
 router.post('/register', async (req, res) => {
@@ -33,6 +36,9 @@ router.post('/register', async (req, res) => {
     // 生成 Token
     const token = generateToken(result.lastID);
 
+    // 判断是否为超管
+    const isAdmin = username === ADMIN_USERNAME;
+
     res.status(201).json({
       message: '注册成功',
       token,
@@ -40,7 +46,8 @@ router.post('/register', async (req, res) => {
         id: result.lastID,
         username,
         nickname: nickname || username,
-        chips: 20000
+        chips: 20000,
+        isAdmin
       }
     });
   } catch (error) {
@@ -83,6 +90,9 @@ router.post('/login', async (req, res) => {
     // 生成 Token
     const token = generateToken(user.id);
 
+    // 判断是否为超管
+    const isAdmin = user.username === ADMIN_USERNAME;
+
     res.json({
       message: '登录成功',
       token,
@@ -90,11 +100,24 @@ router.post('/login', async (req, res) => {
         id: user.id,
         username: user.username,
         nickname: user.nickname,
-        chips: user.chips
+        chips: user.chips,
+        isAdmin
       }
     });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({ error: '服务器错误' });
+  }
+});
+
+// 获取排行榜（按筹码排序）- 需要认证
+router.get('/leaderboard', authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.userId;
+    const leaderboard = await userDB.getLeaderboard(currentUserId);
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('Get leaderboard error:', error);
     res.status(500).json({ error: '服务器错误' });
   }
 });
@@ -109,11 +132,15 @@ router.get('/me', async (req, res) => {
       return res.status(404).json({ error: '用户不存在' });
     }
 
+    // 判断是否为超管
+    const isAdmin = user.username === ADMIN_USERNAME;
+
     res.json({
       id: user.id,
       username: user.username,
       nickname: user.nickname,
-      chips: user.chips
+      chips: user.chips,
+      isAdmin
     });
   } catch (error) {
     console.error('Get user error:', error);

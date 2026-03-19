@@ -117,6 +117,33 @@ const userDB = {
     );
   },
 
+  // 获取排行榜（按筹码排序）
+  async getLeaderboard(currentUserId) {
+    return dbAll(`
+      SELECT 
+        id, 
+        username, 
+        nickname, 
+        chips,
+        CASE WHEN id = ? THEN 1 ELSE 0 END as is_current_user
+      FROM users 
+      ORDER BY chips DESC 
+      LIMIT 50
+    `, [currentUserId]);
+  },
+
+  // 获取所有用户（超管用）
+  async getAllUsers() {
+    return dbAll(
+      'SELECT id, username, nickname, chips, created_at, last_login FROM users ORDER BY created_at DESC'
+    );
+  },
+
+  // 删除用户（超管用）
+  async deleteUser(id) {
+    return dbRun('DELETE FROM users WHERE id = ?', [id]);
+  },
+
   // 更新最后登录时间
   async updateLastLogin(id) {
     return dbRun(
@@ -184,6 +211,14 @@ const roomDB = {
   // 更新房间状态
   async updateRoomStatus(roomId, status) {
     return dbRun('UPDATE rooms SET status = ? WHERE id = ?', [status, roomId]);
+  },
+  
+  // 删除所有房间（超管用）
+  async deleteAllRooms() {
+    // 先删除所有房间玩家关联记录
+    await dbRun('DELETE FROM room_players');
+    // 再删除所有房间
+    return dbRun('DELETE FROM rooms');
   }
 };
 

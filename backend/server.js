@@ -8,6 +8,7 @@ const { initDatabase } = require('./db/database');
 const { authMiddleware } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/rooms');
+const adminRoutes = require('./routes/admin');
 const { initSocketHandlers } = require('./socket/gameHandler');
 
 const app = express();
@@ -35,6 +36,7 @@ app.use('/test', express.static(path.join(__dirname, '../test')));
 // 路由
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', authMiddleware, roomRoutes);
+app.use('/api/admin', authMiddleware, adminRoutes);
 
 // 错误处理
 app.use((err, req, res, next) => {
