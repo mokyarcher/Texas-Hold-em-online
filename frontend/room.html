@@ -349,8 +349,14 @@
         let isReady = false;
         let socket = null;
 
+        let refreshInterval = null;
+        let isLeaving = false; // 标记是否正在离开房间
+
         // 加载房间信息
         async function loadRoom() {
+            // 如果正在离开，不再加载
+            if (isLeaving) return;
+
             try {
                 const response = await fetch(`${API_BASE}/rooms/${roomId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -358,8 +364,11 @@
 
                 if (!response.ok) {
                     if (response.status === 404) {
-                        alert('房间不存在');
-                        window.location.href = 'lobby.html';
+                        // 如果是主动离开的，不显示提示
+                        if (!isLeaving) {
+                            alert('房间不存在');
+                            window.location.href = 'lobby.html';
+                        }
                         return;
                     }
                     throw new Error('加载失败');
@@ -586,6 +595,13 @@
         async function leaveRoom() {
             if (!confirm('确定要离开房间吗？')) return;
 
+            // 标记正在离开，停止自动刷新
+            isLeaving = true;
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+
             try {
                 const response = await fetch(`${API_BASE}/rooms/${roomId}/leave`, {
                     method: 'POST',
@@ -614,7 +630,7 @@
         // 初始加载
         loadRoom();
         // 每2秒刷新
-        setInterval(loadRoom, 2000);
+        refreshInterval = setInterval(loadRoom, 2000);
     </script>
 </body>
 </html>
