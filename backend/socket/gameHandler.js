@@ -11,6 +11,8 @@ const socketMap = new Map();
 const onlineUsers = new Map();
 // 人机AI实例
 const botAI = new BotAI();
+// 游戏状态监控（用于检测死锁）
+const gameStateMonitors = new Map();
 
 // 获取在线用户列表（导出供其他模块使用）
 function getOnlineUsers() {
@@ -51,7 +53,8 @@ class GameState {
       socketId: null,  // 将在连接时设置
       disconnectedAt: null, // 掉线时间
       disconnected: false, // 是否掉线
-      isBot: p.is_bot === 1 // 标记是否为人机
+      isBot: p.is_bot === 1, // 标记是否为人机
+      hasActed: false // 标记当前轮次是否已经行动过
     }));
     this.communityCards = [];
     this.pot = 0;
@@ -116,6 +119,12 @@ class GameState {
       }
       pos = (pos + 1) % total;
       loopCount++;
+    }
+    // 没有找到活跃玩家，返回第一个未弃牌的玩家（可能是全下玩家）
+    for (let i = 0; i < total; i++) {
+      if (!this.players[i].folded && !this.players[i].eliminated) {
+        return i;
+      }
     }
     return -1;
   }
@@ -591,27 +600,40 @@ function initSocketHandlers(io) {
 function shouldAdvanceRound(game) {
   const activePlayers = game.getActivePlayers();
   
-  // 检查是否只剩人机
-  const realPlayers = activePlayers.filter(p => !p.isBot);
-  if (realPlayers.length === 0 && activePlayers.length > 0) {
-    console.log(`[Game] Only bots left, should end game`);
+  // 只剩一个活跃玩家，应该进入下一轮/结束
+  if (activePlayers.length <= 1) {
+    console.log(`[Game] Only ${activePlayers.length} active player(s), should advance`);
     return true;
   }
   
-  if (activePlayers.length <= 1) return true;
-  
-  const allActed = activePlayers.every(p => 
+  // 检查所有活跃玩家是否都已行动（跟注或全下）
+  const allBetMatched = activePlayers.every(p => 
     p.currentBet === game.currentBet || p.allIn
   );
   
-  return allActed;
+  // 检查所有活跃玩家是否都至少行动过一次
+  const allHaveActed = activePlayers.every(p => p.hasActed);
+  
+  console.log(`[Game] shouldAdvanceRound check: allBetMatched=${allBetMatched}, allHaveActed=${allHaveActed}`);
+  console.log(`[Game] Active players: ${activePlayers.map(p => `${p.username}(hasActed:${p.hasActed},currentBet:${p.currentBet})`).join(', ')}`);
+  
+  // 只有当所有玩家都至少行动过一次，并且下注额相等时，才能进入下一轮
+  if (allBetMatched && allHaveActed) {
+    console.log(`[Game] All active players have acted and bets matched, should advance round`);
+    return true;
+  }
+  
+  return false;
 }
 
 async function advanceRound(io, roomId, game) {
+  console.log(`[ADVANCE] Called for room ${roomId}, current round: ${game.currentRound}`);
   const notFoldedPlayers = game.getNotFoldedPlayers();
+  console.log(`[ADVANCE] Not folded players: ${notFoldedPlayers.length} - ${notFoldedPlayers.map(p => p.username).join(', ')}`);
   
   // 检查是否还有任何玩家在游戏中（包括人机）
   if (notFoldedPlayers.length === 0) {
+    console.log(`[ADVANCE] No players left, ending game`);
     // 没有任何玩家在游戏中，直接结束游戏并解散房间
     console.log(`[Game] Room ${roomId} - no players left, ending game and deleting room`);
     await roomDB.deleteRoom(roomId);
@@ -632,14 +654,21 @@ async function advanceRound(io, roomId, game) {
   
   // 只剩一个玩家，直接获胜
   if (notFoldedPlayers.length === 1) {
+    console.log(`[ADVANCE] Only one player left: ${notFoldedPlayers[0].username}, calling endGame`);
     endGame(io, roomId, game, notFoldedPlayers[0]);
     return;
   }
+  
+  console.log(`[ADVANCE] Continuing to next round`);
 
   game.currentRound++;
   game.currentBet = 0;
   game.roundBets = 0;
-  game.players.forEach(p => p.currentBet = 0);
+  game.players.forEach(p => {
+    p.currentBet = 0;
+    p.hasActed = false; // 重置行动标记
+  });
+  console.log(`[ADVANCE] Reset hasActed for all players`);
 
   switch (game.currentRound) {
     case 1: // Flop
@@ -671,14 +700,17 @@ async function advanceRound(io, roomId, game) {
 }
 
 function showdown(io, roomId, game) {
+  console.log(`[SHOWDOWN] Called for room ${roomId}`);
   const activePlayers = game.getNotFoldedPlayers();
+  console.log(`[SHOWDOWN] Active players: ${activePlayers.length} - ${activePlayers.map(p => p.username).join(', ')}`);
   
   if (activePlayers.length === 0) {
-    console.log('No active players in showdown');
+    console.log('[SHOWDOWN] No active players in showdown');
     return;
   }
   
   if (activePlayers.length === 1) {
+    console.log(`[SHOWDOWN] Only one player left: ${activePlayers[0].username}, calling endGame`);
     endGame(io, roomId, game, activePlayers[0]);
     return;
   }
@@ -697,8 +729,13 @@ function showdown(io, roomId, game) {
 }
 
 async function endGame(io, roomId, game, winner, isTie = false, bestHand = null) {
+  console.log(`[ENDGAME] Called for room ${roomId}, winner: ${winner ? winner.username : 'none'}, isTie: ${isTie}`);
+  console.log(`[ENDGAME] Game state - status: ${game.status}, round: ${game.currentRound}, pot: ${game.pot}`);
+  console.log(`[ENDGAME] Players: ${game.players.map(p => `${p.username}(folded:${p.folded},allIn:${p.allIn},eliminated:${p.eliminated})`).join(', ')}`);
+  
   winner.chips += game.pot;
   game.status = 'finished';
+  console.log(`[ENDGAME] Game status set to 'finished'`);
   
   // 清除掉线计时器（游戏结束，不再需要）
   if (game.disconnectTimer) {
@@ -868,13 +905,34 @@ function handleDisconnectTimeout(io, roomId, game, playerIndex) {
     }
   } else {
     // 继续游戏，找到下一个可行动的玩家
-    game.currentPlayer = game.findNextActivePlayer(game.currentPlayer);
-    broadcastGameState(io, roomId, game);
+    const nextPlayer = game.findNextActivePlayer(game.currentPlayer);
+    if (nextPlayer >= 0) {
+      game.currentPlayer = nextPlayer;
+      broadcastGameState(io, roomId, game);
+    } else {
+      // 没有找到下一个玩家，但还有多个活跃玩家，这不应该发生
+      console.error(`[Disconnect] No next player found but ${activePlayers.length} active players remain`);
+      // 尝试结束游戏
+      if (activePlayers.length === 1) {
+        endGame(io, roomId, game, activePlayers[0]);
+      }
+    }
   }
 }
 
+// 存储 io 实例供监控使用
+let ioInstance = null;
+
 function broadcastGameState(io, roomId, game) {
+  // 保存 io 实例
+  if (!ioInstance && io) {
+    ioInstance = io;
+  }
+  
   console.log(`[Broadcast] Room ${roomId}, Round ${game.currentRound}, CurrentPlayer: ${game.currentPlayer}, Players: ${game.players.length}`);
+  
+  // 更新游戏状态监控
+  updateGameStateMonitor(roomId, game);
   
   // 给每个在线玩家发送包含自己手牌的私有状态
   game.players.forEach(p => {
@@ -905,37 +963,243 @@ function broadcastGameState(io, roomId, game) {
   }
 }
 
-// 处理人机行动
-function handleBotTurn(io, roomId, game) {
+// 更新游戏状态监控
+function updateGameStateMonitor(roomId, game) {
+  const now = Date.now();
+  const monitor = gameStateMonitors.get(roomId);
+  
+  // 获取当前玩家
   const currentPlayer = game.players[game.currentPlayer];
   
-  if (!currentPlayer.isBot) return;
+  if (!monitor) {
+    // 首次记录
+    gameStateMonitors.set(roomId, {
+      lastUpdate: now,
+      currentPlayer: game.currentPlayer,
+      currentRound: game.currentRound,
+      pot: game.pot,
+      stuckCount: 0,
+      isBotTurn: currentPlayer ? currentPlayer.isBot : false
+    });
+    return;
+  }
   
-  console.log(`Bot ${currentPlayer.username} is taking action...`);
+  // 检查状态是否改变
+  if (monitor.currentPlayer !== game.currentPlayer || 
+      monitor.currentRound !== game.currentRound ||
+      monitor.pot !== game.pot) {
+    // 状态已改变，重置监控
+    monitor.lastUpdate = now;
+    monitor.currentPlayer = game.currentPlayer;
+    monitor.currentRound = game.currentRound;
+    monitor.pot = game.pot;
+    monitor.stuckCount = 0;
+    monitor.isBotTurn = currentPlayer ? currentPlayer.isBot : false;
+    return;
+  }
+  
+  // 状态未改变，检查是否卡住
+  const timeSinceLastUpdate = now - monitor.lastUpdate;
+  
+  // 如果当前是真人玩家的回合，给更多时间（60秒）
+  const isBotTurn = currentPlayer ? currentPlayer.isBot : false;
+  const threshold = isBotTurn ? 15000 : 60000; // 人机15秒，真人60秒
+  
+  if (timeSinceLastUpdate > threshold) {
+    monitor.stuckCount++;
+    console.log(`[Monitor] Room ${roomId} state unchanged for ${timeSinceLastUpdate}ms (${isBotTurn ? 'bot' : 'human'} turn), stuckCount: ${monitor.stuckCount}`);
+    
+    // 如果连续3次检测到卡住，尝试恢复
+    if (monitor.stuckCount >= 3) {
+      console.error(`[Monitor] Room ${roomId} appears to be stuck! Attempting recovery...`);
+      recoverStuckGame(roomId, game);
+      monitor.stuckCount = 0;
+      monitor.lastUpdate = now;
+    }
+  }
+}
+
+// 恢复卡住的游戏
+async function recoverStuckGame(roomId, game) {
+  if (!ioInstance) {
+    console.error(`[Recovery] IO instance not available`);
+    return;
+  }
+  
+  try {
+    console.log(`[Recovery] Attempting to recover stuck game in room ${roomId}`);
+    
+    // 检查当前玩家是否有效
+    if (game.currentPlayer < 0 || game.currentPlayer >= game.players.length) {
+      console.log(`[Recovery] Invalid currentPlayer ${game.currentPlayer}, finding next active player`);
+      const nextPlayer = game.findNextActivePlayer(0);
+      if (nextPlayer >= 0) {
+        game.currentPlayer = nextPlayer;
+      } else {
+        // 没有活跃玩家，结束游戏
+        console.log(`[Recovery] No active players, ending game`);
+        const notFoldedPlayers = game.getNotFoldedPlayers();
+        if (notFoldedPlayers.length === 1) {
+          await endGame(ioInstance, roomId, game, notFoldedPlayers[0]);
+        } else {
+          await showdown(ioInstance, roomId, game);
+        }
+        return;
+      }
+    }
+    
+    const currentPlayer = game.players[game.currentPlayer];
+    
+    // 如果当前玩家是人机，强制它行动
+    if (currentPlayer && currentPlayer.isBot) {
+      console.log(`[Recovery] Forcing bot ${currentPlayer.username} to fold`);
+      await executePlayerAction(ioInstance, roomId, game, game.currentPlayer, 'fold', 0);
+      return;
+    }
+    
+    // 如果当前玩家是真人且不在线，自动弃牌
+    if (currentPlayer && !currentPlayer.isBot) {
+      const playerSocket = ioInstance.sockets.sockets.get(currentPlayer.socketId);
+      if (!playerSocket || !playerSocket.connected) {
+        console.log(`[Recovery] Player ${currentPlayer.username} is offline, auto-folding`);
+        await executePlayerAction(ioInstance, roomId, game, game.currentPlayer, 'fold', 0);
+        return;
+      }
+    }
+    
+    // 尝试推进到下一轮
+    console.log(`[Recovery] Trying to advance round`);
+    if (shouldAdvanceRound(game)) {
+      await advanceRound(ioInstance, roomId, game);
+    } else {
+      // 强制找到下一个玩家
+      const nextPlayer = game.findNextActivePlayer(game.currentPlayer);
+      if (nextPlayer >= 0 && nextPlayer !== game.currentPlayer) {
+        game.currentPlayer = nextPlayer;
+        broadcastGameState(ioInstance, roomId, game);
+        handleBotTurn(ioInstance, roomId, game);
+      }
+    }
+  } catch (error) {
+    console.error(`[Recovery] Error recovering game:`, error);
+  }
+}
+
+// 处理人机行动
+function handleBotTurn(io, roomId, game) {
+  // 检查游戏状态
+  if (!game || game.status !== 'playing') {
+    console.log(`[Bot] Game not active, skipping bot turn`);
+    return;
+  }
+  
+  // 检查当前玩家索引是否有效
+  if (game.currentPlayer < 0 || game.currentPlayer >= game.players.length) {
+    console.error(`[Bot] Invalid currentPlayer index: ${game.currentPlayer}`);
+    // 尝试修复当前玩家索引
+    const nextPlayer = game.findNextActivePlayer(0);
+    if (nextPlayer >= 0) {
+      game.currentPlayer = nextPlayer;
+      broadcastGameState(io, roomId, game);
+    }
+    return;
+  }
+  
+  const currentPlayer = game.players[game.currentPlayer];
+  
+  if (!currentPlayer) {
+    console.error(`[Bot] Current player is null at index ${game.currentPlayer}`);
+    return;
+  }
+  
+  if (!currentPlayer.isBot) {
+    console.log(`[Bot] Current player ${currentPlayer.username} is not a bot, skipping`);
+    return;
+  }
+  
+  // 检查人机是否还可以行动
+  if (currentPlayer.folded || currentPlayer.allIn || currentPlayer.eliminated) {
+    console.log(`[Bot] Bot ${currentPlayer.username} cannot act (folded: ${currentPlayer.folded}, allIn: ${currentPlayer.allIn}, eliminated: ${currentPlayer.eliminated})`);
+    // 跳过这个人机，找到下一个可行动的玩家
+    const nextPlayer = game.findNextActivePlayer(game.currentPlayer);
+    if (nextPlayer >= 0 && nextPlayer !== game.currentPlayer) {
+      game.currentPlayer = nextPlayer;
+      broadcastGameState(io, roomId, game);
+      // 递归调用处理下一个玩家
+      handleBotTurn(io, roomId, game);
+    }
+    return;
+  }
+  
+  console.log(`[Bot] Bot ${currentPlayer.username} is taking action...`);
   
   // 延迟1-3秒模拟思考时间
   const thinkTime = 1000 + Math.random() * 2000;
   
-  setTimeout(() => {
-    if (!activeGames.has(roomId) || game.status !== 'playing') return;
-    if (game.currentPlayer !== game.players.findIndex(p => p.userId === currentPlayer.userId)) return;
+  setTimeout(async () => {
+    // 再次检查游戏状态（延迟后可能已改变）
+    if (!activeGames.has(roomId) || !game || game.status !== 'playing') {
+      console.log(`[Bot] Game state changed during thinking, aborting action`);
+      return;
+    }
     
-    const playerIndex = game.findPlayerByUserId(currentPlayer.userId);
-    if (playerIndex < 0) return;
+    // 检查当前玩家是否仍然是这个人机
+    const currentPlayerIndex = game.currentPlayer;
+    if (currentPlayerIndex < 0 || currentPlayerIndex >= game.players.length) {
+      console.error(`[Bot] Invalid currentPlayer index after thinking: ${currentPlayerIndex}`);
+      return;
+    }
     
-    const player = game.players[playerIndex];
-    const decision = botAI.decideAction(game, playerIndex);
+    const player = game.players[currentPlayerIndex];
+    if (!player || !player.isBot || player.userId !== currentPlayer.userId) {
+      console.log(`[Bot] Turn changed to another player, aborting bot action`);
+      return;
+    }
     
-    console.log(`Bot ${player.username} decided: ${decision.action}${decision.amount ? ` ${decision.amount}` : ''}`);
+    // 检查人机是否还可以行动
+    if (player.folded || player.allIn || player.eliminated) {
+      console.log(`[Bot] Bot ${player.username} cannot act anymore, skipping`);
+      // 找到下一个玩家
+      const nextPlayer = game.findNextActivePlayer(game.currentPlayer);
+      if (nextPlayer >= 0 && nextPlayer !== game.currentPlayer) {
+        game.currentPlayer = nextPlayer;
+        broadcastGameState(io, roomId, game);
+        handleBotTurn(io, roomId, game);
+      }
+      return;
+    }
     
-    // 执行人机的行动
-    executePlayerAction(io, roomId, game, playerIndex, decision.action, decision.amount);
+    try {
+      const decision = botAI.decideAction(game, currentPlayerIndex);
+      
+      console.log(`[Bot] Bot ${player.username} decided: ${decision.action}${decision.amount ? ` ${decision.amount}` : ''}`);
+      
+      // 执行人机的行动
+      await executePlayerAction(io, roomId, game, currentPlayerIndex, decision.action, decision.amount);
+    } catch (error) {
+      console.error(`[Bot] Error executing bot action:`, error);
+      // 如果出错，尝试让人机弃牌
+      try {
+        await executePlayerAction(io, roomId, game, currentPlayerIndex, 'fold', 0);
+      } catch (foldError) {
+        console.error(`[Bot] Error folding bot:`, foldError);
+      }
+    }
   }, thinkTime);
 }
 
 // 执行玩家行动（包括人机）
-async function executePlayerAction(io, roomId, game, playerIndex, action, amount = 0) {
+async function executePlayerAction(io, roomId, game, playerIndex, action, amount) {
+  console.log(`[ACTION] Executing action for room ${roomId}, playerIndex: ${playerIndex}, action: ${action}, amount: ${amount}`);
+  
   const player = game.players[playerIndex];
+  if (!player) {
+    console.error(`[ACTION] Player not found at index ${playerIndex}`);
+    return;
+  }
+  
+  console.log(`[ACTION] Player: ${player.username}, currentBet: ${player.currentBet}, chips: ${player.chips}`);
+  console.log(`[ACTION] Game state - currentPlayer: ${game.currentPlayer}, currentBet: ${game.currentBet}, pot: ${game.pot}`);
   
   switch (action) {
     case 'fold':
@@ -1001,6 +1265,10 @@ async function executePlayerAction(io, roomId, game, playerIndex, action, amount
       return;
   }
 
+  // 标记玩家已行动
+  player.hasActed = true;
+  console.log(`[ACTION] Player ${player.username} has acted, hasActed set to true`);
+
   // 广播行动
   io.to(roomId).emit('action_broadcast', {
     playerId: player.userId,
@@ -1011,11 +1279,35 @@ async function executePlayerAction(io, roomId, game, playerIndex, action, amount
   });
 
   // 检查是否进入下一轮
+    console.log(`[ACTION] Checking shouldAdvanceRound for room ${roomId}`);
     if (shouldAdvanceRound(game)) {
+      console.log(`[ACTION] shouldAdvanceRound returned true, advancing round`);
       await advanceRound(io, roomId, game);
     } else {
+      console.log(`[ACTION] shouldAdvanceRound returned false, finding next player`);
       // 下一个玩家
-      game.currentPlayer = game.findNextActivePlayer(game.currentPlayer);
+      const nextPlayer = game.findNextActivePlayer(game.currentPlayer);
+      
+      // 检查是否找到下一个玩家
+      if (nextPlayer < 0) {
+        console.error(`[Game] No next active player found after ${player.username}'s action. Ending game.`);
+        // 没有活跃玩家，结束游戏
+        const notFoldedPlayers = game.getNotFoldedPlayers();
+        if (notFoldedPlayers.length === 1) {
+          await endGame(io, roomId, game, notFoldedPlayers[0]);
+        } else if (notFoldedPlayers.length === 0) {
+          // 所有人都弃牌了，不应该发生，但处理一下
+          console.error(`[Game] All players folded unexpectedly!`);
+          await showdown(io, roomId, game);
+        } else {
+          // 还有未弃牌玩家但都不是活跃状态（都全下了），进入摊牌
+          console.log(`[Game] All remaining players are all-in, going to showdown`);
+          await advanceRound(io, roomId, game);
+        }
+        return;
+      }
+      
+      game.currentPlayer = nextPlayer;
       broadcastGameState(io, roomId, game);
       
       // 检查下一个玩家是否是人机

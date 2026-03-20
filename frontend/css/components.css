@@ -5,13 +5,42 @@
     left: 0;
     right: 0;
     background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.8));
-    padding: 20px;
+    padding: 15px 20px;
     display: flex;
-    justify-content: center;
-    gap: 15px;
+    flex-direction: column;
+    align-items: center;
     border-top: 1px solid rgba(255,255,255,0.1);
     backdrop-filter: blur(20px);
     z-index: 100;
+}
+
+.control-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    width: 100%;
+}
+
+/* ===== 回合倒计时 ===== */
+.turn-timer {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ffd700;
+    margin-bottom: 10px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    min-width: 60px;
+    text-align: center;
+}
+
+.turn-timer.warning {
+    color: #e74c3c;
+    text-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
 }
 
 /* ===== 按钮样式 ===== */

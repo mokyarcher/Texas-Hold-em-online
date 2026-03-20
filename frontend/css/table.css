@@ -3,7 +3,7 @@
     position: absolute;
     width: 90%;
     height: 85%;
-    top: 50%;
+    top: 45%;
     left: 50%;
     transform: translate(-50%, -50%);
     background: 
@@ -15,6 +15,36 @@
         0 0 0 15px #2a1810,
         0 0 0 20px #1a0f0a;
     overflow: visible;
+}
+
+/* 游戏区域娱乐标语 */
+.game-slogan {
+    position: fixed;
+    top: 50%;
+    color: rgba(255, 215, 0, 0.25);
+    font-size: 3rem;
+    font-weight: 700;
+    letter-spacing: 8px;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    pointer-events: none;
+    user-select: none;
+    text-shadow: 
+        0 0 20px rgba(255, 215, 0, 0.3),
+        0 0 40px rgba(255, 215, 0, 0.2),
+        0 2px 4px rgba(0, 0, 0, 0.5);
+    z-index: 5;
+    font-family: 'Crimson Pro', serif;
+}
+
+.slogan-left {
+    left: 30px;
+    transform: translateY(-50%);
+}
+
+.slogan-right {
+    right: 30px;
+    transform: translateY(-50%);
 }
 
 /* 桌台木纹边框效果 */

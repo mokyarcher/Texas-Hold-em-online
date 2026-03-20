@@ -4,11 +4,22 @@ class BotAI {
   }
 
   decideAction(game, playerIndex) {
+    console.log(`[BotAI] decideAction called for player ${playerIndex}`);
+    
     const player = game.players[playerIndex];
+    if (!player) {
+      console.error(`[BotAI] Player not found at index ${playerIndex}`);
+      return { action: 'fold' };
+    }
+    
+    console.log(`[BotAI] Player: ${player.username}, hand: ${JSON.stringify(player.hand)}, chips: ${player.chips}`);
+    
     const handStrength = this.evaluateHandStrength(game, player);
     const potOdds = this.calculatePotOdds(game, player);
     const position = this.getPosition(game, playerIndex);
     const randomFactor = Math.random();
+    
+    console.log(`[BotAI] handStrength: ${handStrength}, potOdds: ${potOdds}, position: ${position}`);
 
     const callAmount = game.currentBet - player.currentBet;
     const canCheck = callAmount === 0;
@@ -16,23 +27,32 @@ class BotAI {
 
     if (canCheck) {
       if (handStrength > 0.6 || randomFactor > 0.6) {
-        return this.decideBet(game, player, handStrength, position);
+        const decision = this.decideBet(game, player, handStrength, position);
+        console.log(`[BotAI] Decision (canCheck): ${JSON.stringify(decision)}`);
+        return decision;
       }
+      console.log(`[BotAI] Decision: check`);
       return { action: 'check' };
     }
 
     if (canCall) {
       if (handStrength > 0.7) {
-        return this.decideBet(game, player, handStrength, position);
+        const decision = this.decideBet(game, player, handStrength, position);
+        console.log(`[BotAI] Decision (strong hand): ${JSON.stringify(decision)}`);
+        return decision;
       } else if (handStrength > 0.4 && potOdds > 0.25) {
+        console.log(`[BotAI] Decision: call (good pot odds)`);
         return { action: 'call' };
       } else if (handStrength > 0.25 && randomFactor > 0.5) {
+        console.log(`[BotAI] Decision: call (random)`);
         return { action: 'call' };
       } else if (handStrength < 0.15 && randomFactor > 0.85) {
+        console.log(`[BotAI] Decision: call (bluff)`);
         return { action: 'call' };
       }
     }
 
+    console.log(`[BotAI] Decision: fold`);
     return { action: 'fold' };
   }
 
@@ -74,13 +94,18 @@ class BotAI {
   }
 
   evaluateHandStrength(game, player) {
+    console.log(`[BotAI] evaluateHandStrength called`);
+    
     const round = game.currentRound;
     const communityCards = game.communityCards;
     const hand = player.hand;
+    
+    console.log(`[BotAI] round: ${round}, hand: ${JSON.stringify(hand)}, communityCards: ${JSON.stringify(communityCards)}`);
 
     let strength = 0;
 
     const handRank = this.getHandRank(hand, communityCards);
+    console.log(`[BotAI] handRank: ${handRank}`);
     strength += handRank * 0.4;
 
     if (hand.length === 2) {
@@ -113,7 +138,11 @@ class BotAI {
   }
 
   getHandRank(hand, communityCards) {
+    console.log(`[BotAI] getHandRank called`);
+    
     const allCards = [...hand, ...communityCards];
+    console.log(`[BotAI] allCards: ${JSON.stringify(allCards)}`);
+    
     if (allCards.length < 5) return 0.3;
 
     const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -124,6 +153,10 @@ class BotAI {
     const suitCounts = {};
     
     allCards.forEach(card => {
+      if (!card || !card.rank) {
+        console.error(`[BotAI] Invalid card: ${JSON.stringify(card)}`);
+        return;
+      }
       const rankVal = rankValues[card.rank];
       rankCounts[rankVal] = (rankCounts[rankVal] || 0) + 1;
       suitCounts[card.suit] = (suitCounts[card.suit] || 0) + 1;
@@ -132,6 +165,8 @@ class BotAI {
     const counts = Object.values(rankCounts).sort((a, b) => b - a);
     const isFlush = Object.values(suitCounts).some(c => c >= 5);
     const isStraight = this.checkStraight(rankCounts);
+
+    console.log(`[BotAI] counts: ${JSON.stringify(counts)}, isFlush: ${isFlush}, isStraight: ${isStraight}`);
 
     if (counts[0] === 4) return 0.9;
     if (counts[0] === 3 && counts[1] >= 2) return 0.85;

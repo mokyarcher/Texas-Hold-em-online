@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>德州扑克 - 游戏中</title>
+    <title>贵州扑克 - 游戏中</title>
     <link rel="stylesheet" href="css/base.css?v=3">
     <link rel="stylesheet" href="css/table.css?v=3">
     <link rel="stylesheet" href="css/cards.css?v=3">
@@ -14,19 +14,21 @@
         /* 联机版额外样式 */
         .connection-status {
             position: fixed;
-            top: 10px;
-            left: 10px;
-            padding: 5px 15px;
-            border-radius: 15px;
+            top: 160px;
+            right: 120px;
+            padding: 8px 20px;
+            border-radius: 6px;
             font-size: 0.8rem;
             z-index: 100;
+            border: none;
+            font-weight: 500;
         }
         .connection-status.connected {
-            background: #27ae60;
+            background: rgba(39, 174, 96, 0.8);
             color: white;
         }
         .connection-status.disconnected {
-            background: #e74c3c;
+            background: rgba(231, 76, 60, 0.8);
             color: white;
         }
         .player-seat.disconnected {
@@ -109,7 +111,7 @@
         }
         .exit-btn {
             position: fixed;
-            top: 130px;
+            top: 160px;
             right: 10px;
             padding: 8px 20px;
             background: rgba(231, 76, 60, 0.8);
@@ -271,7 +273,7 @@
     
     <!-- 标题 -->
     <div class="header">
-        <h1 class="title">♠ 德州扑克 ♥</h1>
+        <h1 class="title">♠ 贵州扑克 ♥</h1>
         <div class="subtitle">房间: <span id="roomId">--</span></div>
     </div>
     
@@ -297,6 +299,10 @@
             <span class="info-value" id="currentBet">0</span>
         </div>
     </div>
+    
+    <!-- 娱乐标语 -->
+    <div class="game-slogan slogan-left">仅供娱乐</div>
+    <div class="game-slogan slogan-right">禁止赌博</div>
     
     <!-- 游戏主区域 -->
     <div class="game-container">
@@ -324,14 +330,17 @@
     
     <!-- 游戏控制面板 -->
     <div class="control-panel" id="controlPanel" style="display: none;">
-        <button class="btn btn-secondary" onclick="gameAction('fold')">弃牌 (F)</button>
-        <button class="btn btn-secondary" onclick="checkOrCall()">过牌/跟注 (C)</button>
-        <div class="bet-controls">
-            <input type="range" class="bet-slider" id="betSlider" min="20" max="1000" value="20" step="10">
-            <span class="bet-amount" id="betAmount">20</span>
+        <div class="turn-timer" id="turnTimer">60</div>
+        <div class="control-buttons">
+            <button class="btn btn-secondary" onclick="gameAction('fold')">弃牌 (F)</button>
+            <button class="btn btn-secondary" onclick="checkOrCall()">过牌/跟注 (C)</button>
+            <div class="bet-controls">
+                <input type="range" class="bet-slider" id="betSlider" min="20" max="1000" value="20" step="10">
+                <span class="bet-amount" id="betAmount">20</span>
+            </div>
+            <button class="btn btn-primary" onclick="raise()">加注 (R)</button>
+            <button class="btn btn-danger" onclick="gameAction('allin')">全下 (A)</button>
         </div>
-        <button class="btn btn-primary" onclick="raise()">加注 (R)</button>
-        <button class="btn btn-danger" onclick="gameAction('allin')">全下 (A)</button>
     </div>
 
     <!-- 等待提示 -->
@@ -967,58 +976,145 @@
             }
         }
 
+        // ============ 回合倒计时 ============
+        let turnTimerInterval = null;
+        let turnTimeLeft = 60;
+
+        function startTurnTimer() {
+            // 清除之前的计时器
+            stopTurnTimer();
+
+            turnTimeLeft = 60;
+            updateTimerDisplay();
+            console.log('[Timer] Starting turn timer');
+
+            turnTimerInterval = setInterval(() => {
+                try {
+                    turnTimeLeft--;
+                    updateTimerDisplay();
+                    console.log(`[Timer] Time left: ${turnTimeLeft}`);
+
+                    if (turnTimeLeft <= 0) {
+                        // 时间到，自动弃牌
+                        console.log('[Timer] Time up, auto-folding');
+                        stopTurnTimer();
+                        gameAction('fold');
+                    }
+                } catch (err) {
+                    console.error('[Timer] Error in timer interval:', err);
+                }
+            }, 1000);
+        }
+
+        function stopTurnTimer() {
+            if (turnTimerInterval) {
+                clearInterval(turnTimerInterval);
+                turnTimerInterval = null;
+            }
+        }
+
+        function updateTimerDisplay() {
+            const timerEl = document.getElementById('turnTimer');
+            if (timerEl) {
+                timerEl.textContent = turnTimeLeft;
+                // 少于10秒时添加警告样式
+                if (turnTimeLeft <= 10) {
+                    timerEl.classList.add('warning');
+                } else {
+                    timerEl.classList.remove('warning');
+                }
+            }
+        }
+
         // ============ 更新控制面板 ============
+        let lastTurnState = false; // 记录上次是否是玩家回合
+        
         function updateControls() {
             if (!gameState || mySeat < 0) return;
 
             const isMyTurn = gameState.currentPlayer === mySeat;
             const me = gameState.players[mySeat];
-            
+
             if (!me || me.folded || me.allIn) {
                 showWaitingPanel();
+                lastTurnState = false;
                 return;
             }
 
             if (isMyTurn) {
-                showControlPanel(me);
+                // 只有从非玩家回合切换到玩家回合时才重新启动计时器
+                if (!lastTurnState) {
+                    console.log('[Control] Turn started, showing controls');
+                    showControlPanel(me);
+                }
+                lastTurnState = true;
             } else {
                 showWaitingPanel();
+                lastTurnState = false;
             }
         }
 
         function showControlPanel(me) {
-            document.getElementById('controlPanel').style.display = 'flex';
-            document.getElementById('waitingPanel').style.display = 'none';
+            console.log('[Control] Showing control panel');
+            
+            const controlPanel = document.getElementById('controlPanel');
+            const waitingPanel = document.getElementById('waitingPanel');
+            
+            if (!controlPanel || !waitingPanel) {
+                console.error('[Control] Control panel elements not found');
+                return;
+            }
+            
+            controlPanel.style.display = 'flex';
+            waitingPanel.style.display = 'none';
+
+            // 启动倒计时
+            startTurnTimer();
 
             // 更新滑块范围
-            const toCall = gameState.currentBet - me.currentBet;
-            const minRaise = gameState.currentBet + gameState.lastRaise;
-            const maxBet = me.chips;
+            try {
+                const toCall = gameState.currentBet - me.currentBet;
+                const minRaise = gameState.currentBet + gameState.lastRaise;
+                const maxBet = me.chips;
 
-            const slider = document.getElementById('betSlider');
-            slider.min = Math.min(minRaise, maxBet);
-            slider.max = maxBet;
-            slider.value = Math.max(minRaise, Math.min(slider.value, maxBet));
-            document.getElementById('betAmount').textContent = slider.value;
+                const slider = document.getElementById('betSlider');
+                const betAmount = document.getElementById('betAmount');
+                
+                if (slider && betAmount) {
+                    slider.min = Math.min(minRaise, maxBet);
+                    slider.max = maxBet;
+                    slider.value = Math.max(minRaise, Math.min(slider.value || minRaise, maxBet));
+                    betAmount.textContent = slider.value;
+                }
 
-            // 更新过牌/跟注按钮文字
-            const callBtn = document.querySelector('button[onclick="checkOrCall()"]');
-            if (toCall === 0) {
-                callBtn.textContent = '过牌 (C)';
-            } else {
-                callBtn.textContent = `跟注 ${toCall} (C)`;
+                // 更新过牌/跟注按钮文字
+                const callBtn = document.querySelector('button[onclick="checkOrCall()"]');
+                if (callBtn) {
+                    if (toCall === 0) {
+                        callBtn.textContent = '过牌 (C)';
+                    } else {
+                        callBtn.textContent = `跟注 ${toCall} (C)`;
+                    }
+                }
+            } catch (err) {
+                console.error('[Control] Error updating controls:', err);
             }
         }
 
         function showWaitingPanel() {
             document.getElementById('controlPanel').style.display = 'none';
             document.getElementById('waitingPanel').style.display = 'flex';
+            // 停止倒计时
+            stopTurnTimer();
         }
 
         // ============ 玩家行动 ============
         function gameAction(action, amount = 0) {
             if (!socket || !gameState) return;
-            
+
+            // 停止倒计时
+            stopTurnTimer();
+
             socket.emit('player_action', {
                 action,
                 amount: parseInt(amount)
@@ -1064,7 +1160,11 @@
 
             // 滑块事件
             document.getElementById('betSlider').addEventListener('input', (e) => {
-                document.getElementById('betAmount').textContent = e.target.value;
+                try {
+                    document.getElementById('betAmount').textContent = e.target.value;
+                } catch (err) {
+                    console.error('[Slider] Error updating bet amount:', err);
+                }
             });
         }
 
@@ -1160,15 +1260,15 @@
             
             if (data.isTie) {
                 winnerText.textContent = '平局！';
-                winAmount.textContent = `底池平分: ${data.winner.winAmount} 筹码`;
+                winAmount.textContent = `底池平分: ${data.winner.winAmount} ⭐`;
             } else {
                 winnerText.textContent = `${data.winner.username} 获胜！`;
-                winAmount.innerHTML = `赢得 ${data.winner.winAmount} 筹码<br><small style="color:#ffd700">${data.winner.handName || ''}</small>`;
+                winAmount.innerHTML = `赢得 ${data.winner.winAmount} ⭐<br><small style="color:#ffd700">${data.winner.handName || ''}</small>`;
             }
             
             // 显示被淘汰的玩家
             if (data.eliminatedPlayers && data.eliminatedPlayers.length > 0) {
-                eliminatedInfo.innerHTML = `<br>❌ 以下玩家筹码不足已离开房间：<br>${data.eliminatedPlayers.join('、')}`;
+                eliminatedInfo.innerHTML = `<br>❌ 以下玩家积分不足已离开房间：<br>${data.eliminatedPlayers.join('、')}`;
             } else {
                 eliminatedInfo.textContent = '';
             }
@@ -1178,7 +1278,7 @@
             if (myHandInfo && !myHandInfo.canContinue) {
                 // 当前用户筹码不足，只显示返回大厅
                 btnBackToRoom.style.display = 'none';
-                eliminatedInfo.innerHTML += '<br><br>您的筹码不足，无法继续游戏';
+                eliminatedInfo.innerHTML += '<br><br>您的积分不足，无法继续游戏';
             } else if (!data.canContinue) {
                 // 人数不足无法继续
                 btnBackToRoom.style.display = 'none';

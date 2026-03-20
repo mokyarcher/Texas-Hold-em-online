@@ -444,9 +444,45 @@ router.post('/:roomId/add-bot', async (req, res) => {
       return res.status(400).json({ error: '该座位已被占用' });
     }
 
-    // 随机生成人机名称
-    const botNames = ['小明', '小红', '小刚', '小丽', '小强', '小芳', '小华', '小军', '小梅', '小伟', '小燕', '小东', '小兰', '小波', '小雪'];
-    const finalBotName = botName || botNames[Math.floor(Math.random() * botNames.length)];
+    // 随机生成人机名称（确保不重复）
+    const botNames = ['小明', '小红', '小刚', '小丽', '小强', '小芳', '小华', '小军', '小梅', '小伟', '小燕', '小东', '小兰', '小波', '小雪', '小风', '小雨', '小雷', '小电', '小云', '小星', '小月', '小阳', '小光', '小影'];
+    
+    // 获取已存在的人机名称
+    const existingBotNames = players
+      .filter(p => p.is_bot === 1)
+      .map(p => p.nickname || p.username);
+    
+    // 过滤掉已使用的名字
+    const availableNames = botNames.filter(name => !existingBotNames.includes(name));
+    
+    // 如果没有可用名字，生成一个带数字的唯一名字
+    let finalBotName;
+    if (botName) {
+      // 如果指定了名字，检查是否已存在
+      if (existingBotNames.includes(botName)) {
+        // 已存在，添加数字后缀
+        let counter = 2;
+        while (existingBotNames.includes(`${botName}${counter}`)) {
+          counter++;
+        }
+        finalBotName = `${botName}${counter}`;
+      } else {
+        finalBotName = botName;
+      }
+    } else {
+      // 随机选择可用名字，如果没有可用名字则生成带数字的名字
+      if (availableNames.length > 0) {
+        finalBotName = availableNames[Math.floor(Math.random() * availableNames.length)];
+      } else {
+        // 所有名字都被使用了，生成带数字的名字
+        const baseName = botNames[Math.floor(Math.random() * botNames.length)];
+        let counter = 2;
+        while (existingBotNames.includes(`${baseName}${counter}`)) {
+          counter++;
+        }
+        finalBotName = `${baseName}${counter}`;
+      }
+    }
     
     // 随机生成头像
     const avatars = ['avatar1.png', 'avatar2.png', 'avatar3.png', 'avatar4.png', 'avatar5.png', 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>德州扑克 - 游戏大厅</title>
+    <title>贵州扑克 - 游戏大厅</title>
     <style>
         * {
             margin: 0;
@@ -529,19 +529,24 @@
         }
 
         .leaderboard-item {
-            display: grid;
-            grid-template-columns: 80px 1fr 100px;
-            gap: 15px;
-            padding: 15px;
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
             background: rgba(255,255,255,0.03);
             border-radius: 8px;
-            align-items: center;
             transition: all 0.3s;
+            gap: 15px;
+        }
+
+        .leaderboard-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .leaderboard-avatar {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             background: linear-gradient(135deg, #3498db, #2980b9);
             display: flex;
@@ -549,6 +554,7 @@
             justify-content: center;
             overflow: hidden;
             border: 2px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
         }
 
         .leaderboard-avatar img {
@@ -581,11 +587,14 @@
         .leaderboard-user-info {
             display: flex;
             flex-direction: column;
+            flex: 1;
+            justify-content: center;
         }
 
         .leaderboard-username {
             font-weight: 600;
             font-size: 1.1rem;
+            line-height: 1.3;
         }
 
         /* 前三名渐变色名字 */
@@ -618,17 +627,9 @@
         }
 
         .leaderboard-user-tag {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #f39c12;
-            margin-top: 2px;
-        }
-
-        .leaderboard-status {
-            font-size: 0.75rem;
-            margin-top: 2px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
+            margin-left: 4px;
         }
 
         .leaderboard-status {
@@ -683,6 +684,11 @@
 
         .leaderboard-chips {
             text-align: right;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #ffd700;
+            white-space: nowrap;
+            flex-shrink: 0;
             color: #ffd700;
             font-weight: bold;
             font-size: 1.1rem;
@@ -1016,14 +1022,14 @@
 </head>
 <body>
     <div class="header">
-        <div class="logo">♠ 德州扑克</div>
+        <div class="logo">♠ 贵州扑克</div>
         <div class="user-info">
             <div class="user-avatar" id="headerAvatar">
                 <img id="headerAvatarImg" src="" alt="头像">
             </div>
             <div class="user-details">
                 <span id="username">加载中...</span>
-                <span class="chips">💰 <span id="chips">0</span></span>
+                <span class="chips">⭐ <span id="chips">0</span></span>
             </div>
             <button class="btn-profile" onclick="showProfileModal()">👤 个人信息</button>
             <button class="btn-logout" onclick="logout()">退出</button>
@@ -1122,7 +1128,7 @@
     <div class="modal" id="leaderboardModal">
         <div class="leaderboard-modal-content">
             <div class="leaderboard-header">
-                <span>🏆 富豪排行榜</span>
+                <span>🏆 积分排行榜</span>
                 <button class="btn-close" onclick="hideLeaderboardModal()">关闭</button>
             </div>
             <div class="leaderboard-list" id="leaderboardList">
@@ -1183,7 +1189,7 @@
                     </div>
                     <div class="profile-info-item">
                         <span class="profile-info-label">当前筹码</span>
-                        <span class="profile-info-value chips">💰 <span id="profileChips">0</span></span>
+                        <span class="profile-info-value chips">⭐ <span id="profileChips">0</span></span>
                     </div>
                 </div>
 
@@ -1247,7 +1253,7 @@
     <!-- 修改筹码弹窗 -->
     <div class="modal" id="chipsModal">
         <div class="modal-content">
-            <div class="modal-header">💰 修改用户筹码</div>
+            <div class="modal-header">⭐ 修改用户筹码</div>
             <div id="chipsModalUserInfo" style="margin-bottom: 15px; color: rgba(255,255,255,0.8);"></div>
             <div class="form-group">
                 <label>操作类型</label>
@@ -1984,19 +1990,20 @@
                 
                 return `
                     <div class="leaderboard-item ${isCurrentUser ? 'current-user' : ''}">
-                        <div class="rank-number ${rankClass}">${rankIcon}</div>
-                        <div class="leaderboard-user-info">
+                        <div class="leaderboard-left">
+                            <div class="rank-number ${rankClass}">${rankIcon}</div>
                             <div class="leaderboard-avatar">
                                 <img src="/avatars/${item.avatar_filename || 'avatar1.png'}" alt="头像">
                             </div>
-                            <div class="leaderboard-username ${nameClass}">${escapeHtml(item.nickname || item.username)}</div>
+                        </div>
+                        <div class="leaderboard-user-info">
+                            <div class="leaderboard-username ${nameClass}">${escapeHtml(item.nickname || item.username)} ${isCurrentUser ? '<span class="leaderboard-user-tag">👤 你</span>' : ''}</div>
                             <div class="leaderboard-status ${status}">
                                 <span class="status-dot ${status}"></span>
                                 ${statusText}
                             </div>
-                            ${isCurrentUser ? '<div class="leaderboard-user-tag">👤 你</div>' : ''}
                         </div>
-                        <div class="leaderboard-chips">💰 ${item.chips || 0}</div>
+                        <div class="leaderboard-chips">⭐ ${item.chips || 0}</div>
                     </div>
                 `;
             }).join('');
@@ -2052,7 +2059,7 @@
                             ${escapeHtml(u.nickname || u.username)}
                             ${isSelf ? '<span style="color: #e74c3c;"> (你)</span>' : ''}
                         </div>
-                        <div class="user-chips">💰 ${u.chips || 0}</div>
+                        <div class="user-chips">⭐ ${u.chips || 0}</div>
                         <div style="color: rgba(255,255,255,0.5); font-size: 0.85rem;">
                             ${new Date(u.created_at).toLocaleDateString()}
                         </div>
