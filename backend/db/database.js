@@ -42,6 +42,7 @@ function initDatabase() {
       big_blind INTEGER DEFAULT 20,
       password TEXT,
       status TEXT DEFAULT 'waiting',
+      game_count INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `, (err) => {
@@ -247,6 +248,11 @@ const roomDB = {
     await dbRun('DELETE FROM room_players');
     // 再删除所有房间
     return dbRun('DELETE FROM rooms');
+  },
+
+  // 增加游戏计数
+  async incrementGameCount(roomId) {
+    return dbRun('UPDATE rooms SET game_count = game_count + 1 WHERE id = ?', [roomId]);
   }
 };
 

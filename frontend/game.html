@@ -355,8 +355,11 @@
             <div class="win-amount" id="winAmount"></div>
             <div id="eliminatedInfo" style="color: #e74c3c; margin: 15px 0; font-size: 0.9rem;"></div>
             <div id="gameOverButtons">
-                <button class="btn btn-primary" onclick="backToRoom()" id="btnBackToRoom" style="margin-right: 10px;">返回房间</button>
-                <button class="btn btn-secondary" onclick="backToLobby()">返回大厅</button>
+                <button class="btn btn-primary" onclick="stayInRoom()" id="btnStayInRoom" style="margin-right: 10px; display: none;">留在房间继续</button>
+                <button class="btn btn-secondary" onclick="backToLobby()" id="btnBackToLobby">返回大厅</button>
+            </div>
+            <div id="waitingInfo" style="color: #ffd700; margin-top: 15px; font-size: 0.9rem; display: none;">
+                等待其他玩家选择...
             </div>
         </div>
     </div>
@@ -581,6 +584,49 @@
             socket.on('game_end', (data) => {
                 console.log('Game end:', data);
                 showGameOver(data);
+            });
+
+            // 游戏重新开始（玩家选择留在房间后）
+            socket.on('game_restart', (data) => {
+                console.log('Game restarting:', data);
+                // 隐藏游戏结束弹窗
+                const modal = document.getElementById('gameOverModal');
+                modal.classList.remove('show');
+
+                // 清除手牌显示区域
+                const content = document.querySelector('.game-over-content');
+                const existing = content.querySelector('.all-hands');
+                if (existing) existing.remove();
+
+                // 显示倒计时提示
+                let countdown = data.countdown || 3;
+                showToast(`游戏将在 ${countdown} 秒后开始！`);
+                
+                // 清理上一局的游戏状态，重置牌桌
+                resetGameTable();
+                
+                // 重新加入游戏房间
+                console.log('Rejoining game room:', roomId);
+                socket.emit('join_game', {
+                    roomId,
+                    userId: user.id,
+                    token
+                });
+            });
+
+            // 游戏开始（房主点击开始游戏后）
+            socket.on('game_started', (data) => {
+                console.log('Game started:', data);
+                // 重新加载页面以开始新游戏
+                window.location.reload();
+            });
+
+            // 等待其他玩家选择
+            socket.on('waiting_for_players', (data) => {
+                const waitingInfo = document.getElementById('waitingInfo');
+                if (waitingInfo && waitingInfo.style.display === 'block') {
+                    waitingInfo.textContent = `等待其他玩家选择... (${data.readyCount}/${data.totalCount})`;
+                }
             });
 
             // 玩家掉线
@@ -1168,6 +1214,93 @@
             });
         }
 
+        // ============ 重置牌桌状态 ============
+        function resetGameTable() {
+            console.log('Resetting game table...');
+            
+            // 重置游戏状态变量
+            gameState = null;
+            mySeat = -1;
+            myHand = [];
+            
+            // 清除公共牌显示
+            const communityCards = document.getElementById('communityCards');
+            if (communityCards) {
+                communityCards.innerHTML = '';
+            }
+            
+            // 清除底池显示
+            const potAmount = document.getElementById('potAmount');
+            if (potAmount) {
+                potAmount.textContent = '0';
+            }
+            
+            // 清除所有玩家的手牌和状态
+            document.querySelectorAll('.player-seat').forEach(seat => {
+                // 清除手牌显示区域
+                const handDiv = seat.querySelector('.player-hand');
+                if (handDiv) {
+                    handDiv.innerHTML = '';
+                }
+                // 清除玩家手牌（背面）
+                const playerCards = seat.querySelector('.player-cards');
+                if (playerCards) {
+                    playerCards.innerHTML = '';
+                }
+                // 清除下注显示
+                const currentBet = seat.querySelector('.player-current-bet');
+                if (currentBet) {
+                    currentBet.textContent = '';
+                }
+                // 清除下注标记
+                const bet = seat.querySelector('.player-bet');
+                if (bet) {
+                    bet.textContent = '';
+                    bet.style.display = 'none';
+                }
+                // 清除当前行动标记
+                seat.classList.remove('current-turn');
+                seat.classList.remove('thinking');
+                // 清除思考中标记
+                const thinking = seat.querySelector('.thinking');
+                if (thinking) {
+                    thinking.remove();
+                }
+                // 重置玩家状态文本
+                const status = seat.querySelector('.player-status');
+                if (status) {
+                    status.textContent = '等待中';
+                    status.className = 'player-status';
+                }
+            });
+            
+            // 隐藏控制面板
+            const controls = document.getElementById('gameControls');
+            if (controls) {
+                controls.style.display = 'none';
+            }
+            
+            // 重置轮次显示
+            const roundInfo = document.getElementById('roundInfo');
+            if (roundInfo) {
+                roundInfo.textContent = '等待游戏开始...';
+            }
+            
+            // 清除手牌显示
+            const myHandDiv = document.getElementById('myHand');
+            if (myHandDiv) {
+                myHandDiv.innerHTML = '';
+            }
+            
+            // 清除玩家座位容器（彻底清理所有玩家显示）
+            const seatsContainer = document.getElementById('seatsContainer');
+            if (seatsContainer) {
+                seatsContainer.innerHTML = '';
+            }
+            
+            console.log('Game table reset complete');
+        }
+
         // ============ 提示和弹窗 ============
         function showToast(message, type = 'info') {
             const toast = document.createElement('div');
@@ -1256,7 +1389,9 @@
             const winnerText = document.getElementById('winnerText');
             const winAmount = document.getElementById('winAmount');
             const eliminatedInfo = document.getElementById('eliminatedInfo');
-            const btnBackToRoom = document.getElementById('btnBackToRoom');
+            const btnStayInRoom = document.getElementById('btnStayInRoom');
+            const btnBackToLobby = document.getElementById('btnBackToLobby');
+            const waitingInfo = document.getElementById('waitingInfo');
             
             if (data.isTie) {
                 winnerText.textContent = '平局！';
@@ -1273,19 +1408,34 @@
                 eliminatedInfo.textContent = '';
             }
             
-            // 检查当前用户是否可以继续
+            // 检查当前用户是否可以继续（筹码大于1000）
             const myHandInfo = data.allHands?.find(h => h.userId === user.id);
-            if (myHandInfo && !myHandInfo.canContinue) {
+            const myChips = myHandInfo ? myHandInfo.chips : 0;
+            
+            if (myHandInfo && myChips < 100) {
                 // 当前用户筹码不足，只显示返回大厅
-                btnBackToRoom.style.display = 'none';
+                btnStayInRoom.style.display = 'none';
+                btnBackToLobby.style.display = 'inline-block';
                 eliminatedInfo.innerHTML += '<br><br>您的积分不足，无法继续游戏';
             } else if (!data.canContinue) {
                 // 人数不足无法继续
-                btnBackToRoom.style.display = 'none';
+                btnStayInRoom.style.display = 'none';
+                btnBackToLobby.style.display = 'inline-block';
                 eliminatedInfo.innerHTML += '<br><br>人数不足，无法开始下一局';
+            } else if (myChips >= 1000) {
+                // 筹码充足（>=1000），显示两个选择
+                btnStayInRoom.style.display = 'inline-block';
+                btnBackToLobby.style.display = 'inline-block';
+                btnBackToLobby.textContent = '回到大厅';
+                eliminatedInfo.innerHTML += `<br><br>您当前有 ${myChips} ⭐，可以选择继续游戏或回到大厅`;
             } else {
-                btnBackToRoom.style.display = 'inline-block';
+                // 筹码在100-999之间，只能返回大厅
+                btnStayInRoom.style.display = 'none';
+                btnBackToLobby.style.display = 'inline-block';
+                eliminatedInfo.innerHTML += `<br><br>您当前有 ${myChips} ⭐，积分不足1000无法继续，将返回大厅`;
             }
+            
+            waitingInfo.style.display = 'none';
             
             // 显示所有玩家的手牌
             if (data.allHands) {
@@ -1392,11 +1542,32 @@
         }
 
         function backToLobby() {
+            // 通知服务器玩家选择离开
+            socket.emit('player_choice_after_game', {
+                roomId: roomId,
+                choice: 'leave',
+                userId: user.id
+            });
             window.location.href = 'lobby.html';
         }
         
-        function backToRoom() {
-            window.location.href = `room.html?id=${roomId}`;
+        function stayInRoom() {
+            // 通知服务器玩家选择留下
+            socket.emit('player_choice_after_game', {
+                roomId: roomId,
+                choice: 'stay',
+                userId: user.id
+            });
+            
+            // 隐藏按钮，显示等待信息
+            const btnStayInRoom = document.getElementById('btnStayInRoom');
+            const btnBackToLobby = document.getElementById('btnBackToLobby');
+            const waitingInfo = document.getElementById('waitingInfo');
+            
+            btnStayInRoom.style.display = 'none';
+            btnBackToLobby.style.display = 'none';
+            waitingInfo.style.display = 'block';
+            waitingInfo.textContent = '您选择留在房间，等待其他玩家选择...';
         }
 
         function escapeHtml(text) {

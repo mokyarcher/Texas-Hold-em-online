@@ -238,6 +238,7 @@ function initSocketHandlers(io) {
       // 更新用户状态为 'in_game'
       if (onlineUsers.has(userId)) {
         const user = onlineUsers.get(userId);
+        user.socketId = socket.id;  // 更新 socketId
         user.status = 'in_game';
         user.gameRoomId = roomId;
         user.lastActive = Date.now();
@@ -343,6 +344,13 @@ function initSocketHandlers(io) {
         bigBlind: room.big_blind
       });
       
+      // 轮换庄家位置（根据已完成的游戏次数）
+      const roomGames = room.game_count || 0;
+      game.dealer = roomGames % game.players.length;
+      
+      // 增加游戏计数
+      await roomDB.incrementGameCount(roomId);
+      
       activeGames.set(roomId, game);
 
       // 从 socketMap 恢复 socketId
@@ -367,10 +375,12 @@ function initSocketHandlers(io) {
       
       game.players[sbPos].chips -= game.smallBlind;
       game.players[sbPos].currentBet = game.smallBlind;
+      game.players[sbPos].hasActed = true; // 小盲注已行动
       game.pot += game.smallBlind;
       
       game.players[bbPos].chips -= game.bigBlind;
       game.players[bbPos].currentBet = game.bigBlind;
+      game.players[bbPos].hasActed = true; // 大盲注已行动
       game.pot += game.bigBlind;
       game.currentBet = game.bigBlind;
 
@@ -379,6 +389,15 @@ function initSocketHandlers(io) {
 
       console.log('Game started, broadcasting state...');
       console.log('Players:', game.players.map(p => ({ userId: p.userId, socketId: p.socketId })));
+
+      // 确保所有玩家的 socket 都加入房间
+      game.players.forEach(p => {
+        const playerSocket = io.sockets.sockets.get(p.socketId);
+        if (playerSocket) {
+          playerSocket.join(roomId);
+          console.log(`Player ${p.userId} socket joined room ${roomId}`);
+        }
+      });
 
       // 广播游戏开始 - 每个玩家收到自己的手牌
       let sentCount = 0;
@@ -492,14 +511,26 @@ function initSocketHandlers(io) {
       console.log(`User ${userId} reconnected to room ${roomId}`);
     });
 
+    // 玩家在游戏结束后做出选择（留在房间或返回大厅）
+    socket.on('player_choice_after_game', async ({ roomId, choice, userId }) => {
+      console.log(`[ENDGAME] Received choice from ${userId}: ${choice} for room ${roomId}`);
+      await handlePlayerChoice(io, roomId, userId, choice);
+    });
+
     // 断开连接
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
       
-      // 从在线用户集合移除
+      // 从在线用户集合移除（但要检查是否是同一个socket）
       if (socket.userId && onlineUsers.has(socket.userId)) {
-        onlineUsers.delete(socket.userId);
-        console.log(`User ${socket.userId} is now offline. Total online: ${onlineUsers.size}`);
+        const user = onlineUsers.get(socket.userId);
+        // 只有当前socket匹配时才删除（防止新连接已建立时误删）
+        if (user.socketId === socket.id) {
+          onlineUsers.delete(socket.userId);
+          console.log(`User ${socket.userId} is now offline. Total online: ${onlineUsers.size}`);
+        } else {
+          console.log(`User ${socket.userId} has new socket ${user.socketId}, keeping online status`);
+        }
       }
       
       const info = socketMap.get(socket.id);
@@ -770,10 +801,6 @@ async function endGame(io, roomId, game, winner, isTie = false, bestHand = null)
       }
     } else {
       continuePlayers.push(p);
-      // 重置准备状态（只重置真实玩家）
-      if (!p.isBot) {
-        await roomPlayerDB.setReady(roomId, p.userId, 0);
-      }
     }
   }
   
@@ -786,6 +813,9 @@ async function endGame(io, roomId, game, winner, isTie = false, bestHand = null)
     chips: p.chips,
     canContinue: p.chips >= 100
   }));
+  
+  // 获取真实玩家（不包括人机，且筹码>=100）
+  const realPlayers = game.players.filter(p => !p.isBot && p.chips >= 100);
   
   io.to(roomId).emit('game_end', {
     winner: {
@@ -801,30 +831,6 @@ async function endGame(io, roomId, game, winner, isTie = false, bestHand = null)
     finalState: game.toJSON()
   });
 
-  // 获取当前房间人数
-  const playerCount = await roomPlayerDB.getPlayerCount(roomId);
-  
-  // 计算真实玩家数量（不包括人机）
-  const realPlayerCount = game.players.filter(p => !p.isBot).length;
-  
-  if (playerCount === 0) {
-    // 所有人都被淘汰，删除房间
-    await roomDB.deleteRoom(roomId);
-    console.log(`Room ${roomId} deleted - all players eliminated`);
-  } else if (realPlayerCount === 0) {
-    // 只剩人机，删除房间
-    await roomDB.deleteRoom(roomId);
-    console.log(`Room ${roomId} deleted - only bots left`);
-  } else if (playerCount === 1) {
-    // 只剩一个人，重置为等待状态（等待新人加入）
-    await roomDB.updateRoomStatus(roomId, 'waiting');
-    console.log(`Room ${roomId} reset to waiting - only one player left`);
-  } else {
-    // 多人可以下一局，重置为等待状态
-    await roomDB.updateRoomStatus(roomId, 'waiting');
-    console.log(`Room ${roomId} ready for next game`);
-  }
-  
   // 清理游戏相关定时器
   if (game.disconnectTimer) {
     clearTimeout(game.disconnectTimer);
@@ -835,15 +841,304 @@ async function endGame(io, roomId, game, winner, isTie = false, bestHand = null)
     game.countdownInterval = null;
   }
   
-  // 不立即清理游戏状态，保留60秒以便玩家重连
-  if (activeGames.has(roomId)) {
-    // 设置60秒后清理游戏状态，给玩家重连的机会
-    setTimeout(() => {
-      if (activeGames.has(roomId)) {
-        activeGames.delete(roomId);
-        console.log(`Cleaned up finished game ${roomId} after 60 seconds`);
+  // 设置玩家选择状态
+  game.playerChoices = new Map(); // 存储玩家的选择
+  game.playersStaying = []; // 选择留下的玩家
+  game.playersLeaving = []; // 选择离开的玩家
+  game.choiceTimeout = null; // 选择超时定时器
+  
+  // 所有真实玩家都需要选择（筹码>=100）
+  const playersNeedToChoose = realPlayers;
+  
+  if (playersNeedToChoose.length > 0) {
+    console.log(`[ENDGAME] Waiting for ${playersNeedToChoose.length} players to choose (10 seconds)`);
+    
+    // 设置10秒超时
+    game.choiceTimeout = setTimeout(async () => {
+      console.log(`[ENDGAME] Choice timeout for room ${roomId}`);
+      await handlePlayerChoicesTimeout(io, roomId, game);
+    }, 10000); // 10秒超时
+    
+    // 存储需要选择的玩家列表
+    game.playersNeedToChoose = playersNeedToChoose.map(p => p.userId);
+  } else {
+    // 没有真实玩家需要选择，直接处理结束
+    console.log(`[ENDGAME] No real players need to choose, cleaning up immediately`);
+    await cleanupAfterGame(io, roomId, game);
+  }
+}
+
+// 处理玩家选择超时
+async function handlePlayerChoicesTimeout(io, roomId, game) {
+  console.log(`[ENDGAME] Handling choice timeout for room ${roomId}`);
+  
+  // 未选择的玩家根据筹码自动决定
+  if (game.playersNeedToChoose) {
+    for (const userId of game.playersNeedToChoose) {
+      if (!game.playerChoices.has(userId)) {
+        // 查找玩家信息
+        const player = game.players.find(p => p.userId === userId);
+        if (player) {
+          if (player.chips >= 1000) {
+            // 筹码>=1000，自动选择留下
+            game.playerChoices.set(userId, 'stay');
+            game.playersStaying.push(userId);
+            await roomPlayerDB.setReady(roomId, userId, 0);
+            console.log(`[ENDGAME] Player ${userId} auto-stayed (chips: ${player.chips})`);
+          } else {
+            // 筹码<1000，自动选择离开
+            game.playerChoices.set(userId, 'leave');
+            game.playersLeaving.push(userId);
+            await roomPlayerDB.leaveRoom(roomId, userId);
+            console.log(`[ENDGAME] Player ${userId} auto-left (chips: ${player.chips})`);
+          }
+        }
       }
-    }, 60000); // 60秒后清理
+    }
+  }
+  
+  // 检查是否还有足够玩家留下
+  const stayingCount = game.playersStaying.length;
+  if (stayingCount >= 2) {
+    // 足够玩家留下，自动开始下一局
+    console.log(`[ENDGAME] ${stayingCount} players staying, auto-starting next game`);
+    await autoStartNextGame(io, roomId, game);
+  } else {
+    // 不足够玩家留下，清理房间
+    console.log(`[ENDGAME] Only ${stayingCount} player(s) staying, cleaning up room`);
+    await cleanupAfterGame(io, roomId, game);
+  }
+}
+
+// 处理玩家选择
+async function handlePlayerChoice(io, roomId, userId, choice) {
+  const game = activeGames.get(roomId);
+  if (!game || game.status !== 'finished') {
+    console.log(`[ENDGAME] Cannot handle choice - game not found or not finished`);
+    return;
+  }
+  
+  console.log(`[ENDGAME] Player ${userId} chose to ${choice}`);
+  
+  // 记录玩家选择
+  game.playerChoices.set(userId, choice);
+  
+  if (choice === 'stay') {
+    game.playersStaying.push(userId);
+    // 重置准备状态
+    await roomPlayerDB.setReady(roomId, userId, 0);
+  } else {
+    game.playersLeaving.push(userId);
+    // 从房间中移除
+    await roomPlayerDB.leaveRoom(roomId, userId);
+  }
+  
+  // 通知所有玩家当前选择状态
+  const readyCount = game.playerChoices.size;
+  const totalCount = game.playersNeedToChoose ? game.playersNeedToChoose.length : 0;
+  
+  io.to(roomId).emit('waiting_for_players', {
+    readyCount,
+    totalCount
+  });
+  
+  // 检查是否所有玩家都已选择
+  if (game.playersNeedToChoose && readyCount >= totalCount) {
+    console.log(`[ENDGAME] All players have made their choices`);
+    
+    // 清除超时定时器
+    if (game.choiceTimeout) {
+      clearTimeout(game.choiceTimeout);
+      game.choiceTimeout = null;
+    }
+    
+    // 检查是否还有足够玩家留下
+    const stayingCount = game.playersStaying.length;
+    if (stayingCount >= 2) {
+      // 足够玩家留下，自动开始下一局
+      console.log(`[ENDGAME] ${stayingCount} players staying, auto-starting next game`);
+      await autoStartNextGame(io, roomId, game);
+    } else {
+      // 不足够玩家留下，清理房间
+      console.log(`[ENDGAME] Only ${stayingCount} player(s) staying, cleaning up room`);
+      await cleanupAfterGame(io, roomId, game);
+    }
+  }
+}
+
+// 自动开始下一局游戏
+async function autoStartNextGame(io, roomId, game) {
+  console.log(`[ENDGAME] Auto-starting next game for room ${roomId}`);
+  
+  // 通知所有玩家游戏即将重新开始
+  io.to(roomId).emit('game_restart', {
+    message: '游戏即将开始！',
+    stayingPlayers: game.playersStaying,
+    countdown: 5 // 5秒倒计时后开始
+  });
+  
+  // 等待5秒让玩家准备
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  
+  // 清理旧游戏状态
+  activeGames.delete(roomId);
+  
+  // 重置房间状态为等待
+  await roomDB.updateRoomStatus(roomId, 'waiting');
+  
+  console.log(`[ENDGAME] Old game state cleaned, starting new game`);
+  
+  // 获取房间信息
+  const room = await roomDB.getRoomById(roomId);
+  if (!room) {
+    console.log(`[ENDGAME] Room ${roomId} not found, cannot start new game`);
+    return;
+  }
+  
+  // 获取当前房间玩家
+  const dbPlayers = await roomPlayerDB.getRoomPlayers(roomId);
+  if (dbPlayers.length < 2) {
+    console.log(`[ENDGAME] Not enough players (${dbPlayers.length}), cannot start new game`);
+    return;
+  }
+  
+  // 获取玩家详细信息（包括筹码）
+  const players = [];
+  for (const p of dbPlayers) {
+    let chips = 1000;
+    if (p.is_bot === 1) {
+      chips = 20000;
+    } else {
+      const user = await userDB.findById(p.user_id);
+      chips = user ? user.chips : 1000;
+    }
+    players.push({
+      ...p,
+      chips: chips
+    });
+  }
+  
+  // 创建新的游戏状态
+  const newGame = new GameState(roomId, players, {
+    smallBlind: room.small_blind,
+    bigBlind: room.big_blind
+  });
+  
+  // 轮换庄家位置
+  const roomGames = room.game_count || 0;
+  newGame.dealer = roomGames % newGame.players.length;
+  
+  // 增加游戏计数
+  await roomDB.incrementGameCount(roomId);
+  
+  activeGames.set(roomId, newGame);
+  
+  // 从 socketMap 恢复 socketId
+  socketMap.forEach((info, sockId) => {
+    if (info.roomId === roomId) {
+      const playerIndex = newGame.findPlayerByUserId(info.userId);
+      if (playerIndex >= 0) {
+        newGame.players[playerIndex].socketId = sockId;
+        console.log(`[ENDGAME] Mapped socket ${sockId} to player ${info.userId}`);
+      }
+    }
+  });
+  
+  // 发牌
+  newGame.players.forEach(p => {
+    p.hand = [newGame.dealCard(), newGame.dealCard()];
+  });
+  
+  // 盲注
+  const sbPos = (newGame.dealer + 1) % newGame.players.length;
+  const bbPos = (newGame.dealer + 2) % newGame.players.length;
+  
+  newGame.players[sbPos].chips -= newGame.smallBlind;
+  newGame.players[sbPos].currentBet = newGame.smallBlind;
+  newGame.players[sbPos].hasActed = true;
+  newGame.pot += newGame.smallBlind;
+  
+  newGame.players[bbPos].chips -= newGame.bigBlind;
+  newGame.players[bbPos].currentBet = newGame.bigBlind;
+  newGame.players[bbPos].hasActed = true;
+  newGame.pot += newGame.bigBlind;
+  newGame.currentBet = newGame.bigBlind;
+  
+  // 从UTG开始
+  newGame.currentPlayer = (bbPos + 1) % newGame.players.length;
+  
+  console.log(`[ENDGAME] New game started, broadcasting state...`);
+  
+  // 确保所有玩家的 socket 都加入房间
+  newGame.players.forEach(p => {
+    const playerSocket = io.sockets.sockets.get(p.socketId);
+    if (playerSocket) {
+      playerSocket.join(roomId);
+    }
+  });
+  
+  // 广播游戏开始
+  let sentCount = 0;
+  newGame.players.forEach(p => {
+    const playerSocket = io.sockets.sockets.get(p.socketId);
+    if (playerSocket) {
+      playerSocket.emit('game_started', {
+        redirect: '/game.html?id=' + roomId
+      });
+      playerSocket.emit('game_state', newGame.toPrivateJSON(p.userId));
+      sentCount++;
+    }
+  });
+  
+  console.log(`[ENDGAME] Game start sent to ${sentCount}/${newGame.players.length} players`);
+  
+  // 广播公开状态
+  io.to(roomId).emit('public_state', newGame.toJSON());
+  
+  // 检查第一个玩家是否是人机
+  handleBotTurn(io, roomId, newGame);
+}
+
+// 游戏结束后的清理工作
+async function cleanupAfterGame(io, roomId, game) {
+  console.log(`[ENDGAME] Cleaning up game ${roomId}`);
+  
+  // 获取当前房间人数
+  const playerCount = await roomPlayerDB.getPlayerCount(roomId);
+  
+  // 计算留下的真实玩家数量
+  const stayingRealPlayers = game.playersStaying ? game.playersStaying.length : 0;
+  
+  if (playerCount === 0) {
+    // 所有人都被淘汰或离开，删除房间
+    await roomDB.deleteRoom(roomId);
+    console.log(`[ENDGAME] Room ${roomId} deleted - all players left`);
+    activeGames.delete(roomId);
+  } else if (stayingRealPlayers === 0 && playerCount > 0) {
+    // 没有真实玩家留下，但还有玩家（可能是人机或筹码不足的玩家）
+    await roomDB.updateRoomStatus(roomId, 'waiting');
+    console.log(`[ENDGAME] Room ${roomId} reset to waiting - no real players staying`);
+    activeGames.delete(roomId);
+  } else if (playerCount === 1) {
+    // 只剩一个人，重置为等待状态
+    await roomDB.updateRoomStatus(roomId, 'waiting');
+    console.log(`[ENDGAME] Room ${roomId} reset to waiting - only one player left`);
+    activeGames.delete(roomId);
+  } else {
+    // 多人可以下一局，重置为等待状态并通知玩家
+    await roomDB.updateRoomStatus(roomId, 'waiting');
+    console.log(`[ENDGAME] Room ${roomId} ready for next game with ${stayingRealPlayers} staying players`);
+    
+    // 通知留下的玩家游戏即将重新开始
+    if (game.playersStaying && game.playersStaying.length > 0) {
+      io.to(roomId).emit('game_restart', {
+        message: '游戏即将开始！',
+        stayingPlayers: game.playersStaying
+      });
+    }
+    
+    // 清理游戏状态
+    activeGames.delete(roomId);
   }
 }
 
@@ -1133,8 +1428,9 @@ function handleBotTurn(io, roomId, game) {
   
   console.log(`[Bot] Bot ${currentPlayer.username} is taking action...`);
   
-  // 延迟1-3秒模拟思考时间
-  const thinkTime = 1000 + Math.random() * 2000;
+  // 延迟2-5秒模拟思考时间（根据决策难度不同）
+  // 随机生成思考时间，让体验更真实
+  const thinkTime = 2000 + Math.random() * 3000;
   
   setTimeout(async () => {
     // 再次检查游戏状态（延迟后可能已改变）
