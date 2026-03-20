@@ -33,6 +33,31 @@
             align-items: center;
         }
 
+        .room-details {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .room-header-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .room-header-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
         .room-name {
             font-size: 1.3rem;
             color: #ffd700;
@@ -119,8 +144,19 @@
         }
 
         .seat-avatar.empty-avatar {
-            background: rgba(255,255,255,0.1);
-            color: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.4);
+            border: 2px dashed rgba(255,255,255,0.2);
+            font-size: 2rem;
+            font-weight: 300;
+            transition: all 0.3s ease;
+        }
+
+        .seat.empty:hover .seat-avatar.empty-avatar {
+            background: rgba(255,215,0,0.1);
+            border-color: rgba(255,215,0,0.4);
+            color: rgba(255,215,0,0.8);
+            transform: scale(1.05);
         }
 
         .seat-name {
@@ -443,8 +479,13 @@
     <div id="waitingArea">
         <div class="header">
             <div class="room-info">
-                <div class="room-name" id="roomName">加载中...</div>
-                <div class="room-settings" id="roomSettings">--</div>
+                <div class="room-header-avatar">
+                    <img id="roomAvatarImg" src="" alt="头像">
+                </div>
+                <div class="room-details">
+                    <div class="room-name" id="roomName">加载中...</div>
+                    <div class="room-settings" id="roomSettings">--</div>
+                </div>
             </div>
             <button class="btn-leave" onclick="leaveRoom()">离开房间</button>
         </div>
@@ -609,6 +650,13 @@
             document.getElementById('roomName').textContent = roomData.name;
             document.getElementById('roomSettings').textContent = 
                 `盲注 ${roomData.small_blind}/${roomData.big_blind} | 最多 ${roomData.max_players} 人`;
+            
+            // 设置房间头部的头像
+            const avatarFilename = user.avatar_filename || 'avatar1.png';
+            const roomAvatarImg = document.getElementById('roomAvatarImg');
+            if (roomAvatarImg) {
+                roomAvatarImg.src = `/avatars/${avatarFilename}`;
+            }
 
             // 渲染座位
             const seatsGrid = document.getElementById('seatsGrid');
@@ -631,7 +679,7 @@
                             ${isPlayerHost ? '<div class="seat-host">房主</div>' : ''}
                             ${isBot ? '<div class="bot-badge">AI</div>' : ''}
                             <div class="seat-avatar">
-                                ${isBot ? `<img src="/avatars/${player.bot_avatar || 'avatar1.png'}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : player.username.charAt(0).toUpperCase()}
+                                ${isBot ? `<img src="/avatars/${player.bot_avatar || 'avatar1.png'}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<img src="/avatars/${player.avatar_filename || 'avatar1.png'}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`}
                             </div>
                             <div class="seat-name">${escapeHtml(player.nickname || player.username)}</div>
                             <div class="seat-status ${isPlayerReady ? 'ready' : ''}">
@@ -643,7 +691,7 @@
                 } else {
                     seatsHTML += `
                         <div class="seat empty" onclick="${isHost ? `addBot(${i})` : ''}">
-                            <div class="seat-avatar empty-avatar">?</div>
+                            <div class="seat-avatar empty-avatar">+</div>
                             <div class="seat-status">空座位</div>
                             ${isHost ? '<div class="add-bot-hint">点击添加人机</div>' : ''}
                         </div>
@@ -833,6 +881,15 @@
                 console.log('Bot removed:', data);
                 showToast('人机已离开房间', 'info');
                 loadRoom();
+            });
+
+            // 房间删除（包括只剩人机时自动解散）
+            socket.on('room_deleted', (data) => {
+                console.log('Room deleted:', data);
+                showToast(data.message || '房间已解散', 'warning');
+                setTimeout(() => {
+                    window.location.href = 'lobby.html';
+                }, 1500);
             });
 
             // 玩家断开连接（掉线）

@@ -236,23 +236,34 @@ router.post('/:roomId/leave', async (req, res) => {
         console.log(`Broadcast player_left: ${leavingPlayer.username}`);
       }
 
-      // 检查房间是否还有玩家
-      const playerCount = await roomPlayerDB.getPlayerCount(roomId);
-      console.log(`Room ${roomId} now has ${playerCount} players`);
+      // 检查房间是否还有真实玩家
+      const remainingPlayers = await roomPlayerDB.getRoomPlayers(roomId);
+      const realPlayers = remainingPlayers.filter(p => p.is_bot === 0);
+      console.log(`Room ${roomId} now has ${realPlayers.length} real players and ${remainingPlayers.length} total players`);
       
-      if (playerCount === 0) {
-        // 房间没人了，删除房间
+      if (realPlayers.length === 0) {
+        // 没有真实玩家了，删除房间（无论是否有人机）
         await roomDB.deleteRoom(roomId);
-        console.log(`Room ${roomId} deleted - no players left`);
+        console.log(`Room ${roomId} deleted - no real players left`);
+        
+        // 广播房间删除
+        if (io) {
+          io.to(roomId).emit('room_deleted', {
+            message: '房间已解散'
+          });
+        }
+        
         return res.json({ message: '离开房间成功，房间已解散' });
       }
     }
 
-    // 如果房主离开（等待状态），转让房主给第一个剩余玩家
+    // 如果房主离开（等待状态），转让房主给第一个真实玩家
     if (room.host_id === userId && room.status === 'waiting') {
       const remainingPlayers = await roomPlayerDB.getRoomPlayers(roomId);
-      if (remainingPlayers.length > 0) {
-        const newHostId = remainingPlayers[0].user_id;
+      const realPlayers = remainingPlayers.filter(p => p.is_bot === 0);
+      
+      if (realPlayers.length > 0) {
+        const newHostId = realPlayers[0].user_id;
         await roomDB.updateHost(roomId, newHostId);
         console.log(`Room ${roomId} host changed to ${newHostId}`);
         
@@ -260,7 +271,7 @@ router.post('/:roomId/leave', async (req, res) => {
         if (io) {
           io.to(roomId).emit('host_changed', {
             newHostId: newHostId,
-            newHostName: remainingPlayers[0].username
+            newHostName: realPlayers[0].username
           });
         }
       }

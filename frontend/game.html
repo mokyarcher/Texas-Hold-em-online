@@ -109,7 +109,7 @@
         }
         .exit-btn {
             position: fixed;
-            top: 10px;
+            top: 130px;
             right: 10px;
             padding: 8px 20px;
             background: rgba(231, 76, 60, 0.8);
@@ -737,7 +737,7 @@
                 const isMyself = player.userId === user.id;
                 const isCurrent = index === currentPlayer;
                 const seatClass = getSeatClass(index, maxPlayers);
-                const position = getPositionName(index, maxPlayers);
+                const position = getPositionName(index, maxPlayers, gameState?.dealer);
                 
                 // 确定玩家状态
                 let statusText = '';
@@ -781,39 +781,118 @@
         }
 
         // ============ 获取座位样式 ============
+        // 根据 SEAT_LAYOUT.md 规则定义座位位置
+        // 0号位始终是当前玩家（中下），其他玩家按顺时针方向排列
+        const SEAT_POSITIONS = {
+            2: [
+                { top: '78%', left: '50%' },      // 0号位: 中下（本人）- 更靠下
+                { top: '5%', left: '50%' }        // 1号位: 上中 - 更靠上
+            ],
+            3: [
+                { top: '78%', left: '50%' },      // 0号位: 中下（本人）- 更靠下
+                { top: '40%', right: '5%' },      // 1号位: 右中 - 更靠右
+                { top: '40%', left: '5%' }        // 2号位: 左中 - 更靠左
+            ],
+            4: [
+                { top: '78%', left: '50%' },      // 0号位: 中下（本人）- 更靠下
+                { top: '40%', right: '5%' },      // 1号位: 右中 - 更靠右
+                { top: '5%', left: '50%' },       // 2号位: 上中 - 更靠上
+                { top: '40%', left: '5%' }        // 3号位: 左中 - 更靠左
+            ],
+            5: [
+                { top: '78%', left: '50%' },      // 0号位: 中下（本人）- 更靠下
+                { bottom: '18%', right: '8%' },   // 1号位: 右下 - 更靠右下
+                { top: '18%', right: '8%' },      // 2号位: 右上 - 更靠右上
+                { top: '12%', left: '8%' },       // 3号位: 左上 - 更靠左上
+                { bottom: '18%', left: '8%' }     // 4号位: 左下 - 更靠左下
+            ],
+            6: [
+                { top: '78%', left: '50%' },      // 0号位: 中下（本人）- 更靠下
+                { bottom: '18%', right: '8%' },   // 1号位: 右下 - 更靠右下
+                { top: '25%', right: '5%' },      // 2号位: 右上 - 更靠右
+                { top: '12%', left: '50%' },      // 3号位: 上中 - 更靠上
+                { top: '25%', left: '5%' },       // 4号位: 左上 - 更靠左
+                { bottom: '18%', left: '8%' }     // 5号位: 左下 - 更靠左下
+            ],
+            7: [
+                { top: '78%', left: '50%' },      // 0号位: 中下（本人）- 更靠下
+                { bottom: '18%', right: '8%' },   // 1号位: 右下 - 更靠右下
+                { top: '30%', right: '5%' },      // 2号位: 右上 - 更靠右
+                { top: '5%', right: '30%' },      // 3号位: 中上靠右 - 更靠上
+                { top: '5%', left: '30%' },       // 4号位: 中上靠左 - 更靠上
+                { top: '25%', left: '5%' },       // 5号位: 左上 - 更靠左
+                { bottom: '18%', left: '8%' }     // 6号位: 左下 - 更靠左下
+            ],
+            8: [
+                { top: '78%', left: '50%' },      // 0号位: 中下（本人）- 更靠下
+                { bottom: '18%', right: '8%' },   // 1号位: 右下 - 更靠右下
+                { top: '35%', right: '5%' },      // 2号位: 右中 - 更靠右
+                { top: '5%', right: '25%' },      // 3号位: 中上靠右 - 更靠上
+                { top: '5%', left: '50%' },       // 4号位: 中上 - 更靠上
+                { top: '5%', left: '25%' },       // 5号位: 中上靠左 - 更靠上
+                { top: '35%', left: '5%' },       // 6号位: 左中 - 更靠左
+                { bottom: '18%', left: '8%' }     // 7号位: 左下 - 更靠左下
+            ]
+        };
+
         function getSeatClass(index, total) {
-            // 根据人数和位置返回CSS定位
-            const positions = {
-                2: ['bottom: 5%; left: 20%;', 'bottom: 5%; right: 20%;'],
-                3: ['bottom: 5%; left: 50%; transform: translateX(-50%);', 
-                    'top: 20%; right: 10%;',
-                    'top: 20%; left: 10%;'],
-                4: ['bottom: 5%; left: 50%; transform: translateX(-50%);',
-                    'top: 40%; right: 5%;',
-                    'top: 10%; left: 50%; transform: translateX(-50%);',
-                    'top: 40%; left: 5%;'],
-                5: ['bottom: 5%; left: 50%; transform: translateX(-50%);',
-                    'bottom: 20%; right: 5%;',
-                    'top: 10%; right: 20%;',
-                    'top: 10%; left: 20%;',
-                    'bottom: 20%; left: 5%;'],
-                6: ['bottom: 5%; left: 50%; transform: translateX(-50%);',
-                    'bottom: 20%; right: 5%;',
-                    'top: 40%; right: 5%;',
-                    'top: 10%; right: 20%;',
-                    'top: 10%; left: 20%;',
-                    'top: 40%; left: 5%;']
-            };
+            // 计算相对位置：当前玩家始终是0号位，其他玩家按顺时针排列
+            // index: 玩家在数组中的索引
+            // mySeat: 当前玩家的座位索引
+            // total: 总玩家数
             
-            const pos = positions[total] || positions[6];
-            return pos[index] || pos[0];
+            if (mySeat < 0) {
+                // 还未获取到自己的座位，使用默认布局
+                mySeat = 0;
+            }
+            
+            // 计算相对位置（当前玩家为0，顺时针递增）
+            let relativePos = (index - mySeat + total) % total;
+            
+            // 获取对应人数的位置配置
+            const positions = SEAT_POSITIONS[total] || SEAT_POSITIONS[6];
+            const pos = positions[relativePos];
+            
+            if (!pos) {
+                return 'display: none;';
+            }
+            
+            // 构建CSS样式
+            let style = '';
+            if (pos.top) style += `top: ${pos.top}; `;
+            if (pos.bottom) style += `bottom: ${pos.bottom}; `;
+            if (pos.left) style += `left: ${pos.left}; `;
+            if (pos.right) style += `right: ${pos.right}; `;
+            
+            // 居中对齐
+            if (pos.left === '50%' && !pos.top && !pos.bottom) {
+                style += 'transform: translateX(-50%); ';
+            } else if (pos.top === '50%' && !pos.left && !pos.right) {
+                style += 'transform: translateY(-50%); ';
+            } else if (pos.left === '50%') {
+                style += 'transform: translateX(-50%); ';
+            }
+            
+            return style;
         }
 
         // ============ 获取位置名称 ============
-        function getPositionName(index, total) {
+        function getPositionName(index, total, dealer) {
             // 返回 BTN/SB/BB 等位置标记
-            // 简化处理，实际应该根据dealer位置计算
-            return '';
+            if (dealer === undefined) return '';
+            
+            const dealerPos = dealer % total;
+            const playerPos = index % total;
+            
+            // 计算相对位置
+            const distance = (playerPos - dealerPos + total) % total;
+            
+            switch (distance) {
+                case 0: return 'BTN';
+                case 1: return 'SB';
+                case 2: return 'BB';
+                default: return '';
+            }
         }
 
         // ============ 渲染玩家手牌 ============

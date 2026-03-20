@@ -10,14 +10,9 @@
     filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.6));
 }
 
-/* 座位位置分布 - 统一尺寸 */
-.seat-0 { bottom: 5%; left: 50%; transform: translateX(-50%); }
-.seat-1 { bottom: 20%; right: 5%; }
-.seat-2 { top: 40%; right: 5%; }
-.seat-3 { top: 10%; right: 20%; }
-.seat-4 { top: 10%; left: 20%; }
-.seat-5 { top: 40%; left: 5%; }
-.seat-6 { bottom: 20%; left: 5%; }
+/* 座位位置分布 - 动态计算，由 JavaScript 设置 style 属性 */
+/* 座位位置现在由 game.html 中的 getSeatClass() 函数动态计算 */
+/* 基于 SEAT_LAYOUT.md 规则：0号位始终是当前玩家（中下），其他玩家按顺时针排列 */
 
 /* ===== 玩家信息卡片 ===== */
 .player-card {
@@ -46,12 +41,11 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
-    display: none;
     white-space: nowrap;
     z-index: 10;
 }
 
-.player-position.show {
+.player-position:not(:empty) {
     display: block !important;
 }
 
@@ -135,58 +129,115 @@
     margin-right: 0;
 }
 
-/* ===== 手牌位置 - 统一规则 ===== */
-/* 底部玩家(seat-0,1,6): 手牌在信息框上方 */
-.seat-0 .player-hand { 
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-bottom: 8px;
-}
+/* ===== 手牌位置 - 基于相对位置的动态规则 ===== */
+/* 规则：
+ * - 靠桌子左边的玩家（left: x%）：手牌在信息框正右侧
+ * - 靠桌子右边的玩家（right: x%）：手牌在信息框左侧
+ * - 中上、中下的玩家（left: 50%）：手牌统一放在左侧
+ */
 
-.seat-1 .player-hand { 
+/* ========== 中下位置（本人，left: 50%）：手牌在左侧 ========== */
+.player-seat[style*="top: 78%"][style*="left: 50%"] .player-hand { 
     top: 50%;
     right: 100%;
     transform: translateY(-50%);
     margin-right: 8px;
 }
 
-.seat-6 .player-hand { 
+/* ========== 左下位置（靠左）：手牌在正右侧 ========== */
+.player-seat[style*="bottom: 18%"][style*="left: 8%"] .player-hand { 
     top: 50%;
     left: 100%;
     transform: translateY(-50%);
     margin-left: 8px;
 }
 
-/* 顶部玩家(seat-3,4): 手牌在信息框下方 */
-.seat-3 .player-hand { 
+/* ========== 右下位置（靠右）：手牌在左侧 ========== */
+.player-seat[style*="bottom: 18%"][style*="right: 8%"] .player-hand { 
     top: 50%;
     right: 100%;
     transform: translateY(-50%);
     margin-right: 8px;
 }
 
-.seat-4 .player-hand { 
-    top: 50%;
-    left: 100%;
-    transform: translateY(-50%);
-    margin-left: 8px;
-}
-
-/* 左侧玩家(seat-5): 手牌在信息框右边 */
-.seat-5 .player-hand { 
-    top: 50%;
-    left: 100%;
-    transform: translateY(-50%);
-    margin-left: 8px;
-}
-
-/* 右侧玩家(seat-2): 手牌在信息框左边 */
-.seat-2 .player-hand { 
+/* ========== 上中位置（left: 50%）：手牌在左侧 ========== */
+.player-seat[style*="top: 5%"][style*="left: 50%"] .player-hand,
+.player-seat[style*="top: 12%"][style*="left: 50%"] .player-hand { 
     top: 50%;
     right: 100%;
     transform: translateY(-50%);
     margin-right: 8px;
+}
+
+/* ========== 中上靠右（靠右）：手牌在左侧 ========== */
+.player-seat[style*="top: 5%"][style*="right: 30%"] .player-hand,
+.player-seat[style*="top: 5%"][style*="right: 25%"] .player-hand { 
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+}
+
+/* ========== 中上靠左（靠左）：手牌在正右侧 ========== */
+.player-seat[style*="top: 5%"][style*="left: 30%"] .player-hand,
+.player-seat[style*="top: 5%"][style*="left: 25%"] .player-hand { 
+    top: 50%;
+    left: 100%;
+    transform: translateY(-50%);
+    margin-left: 8px;
+}
+
+/* ========== 左中位置（靠左）：手牌在正右侧 ========== */
+.player-seat[style*="top: 40%"][style*="left: 5%"] .player-hand { 
+    top: 50%;
+    left: 100%;
+    transform: translateY(-50%);
+    margin-left: 8px;
+}
+
+/* ========== 左上位置（靠左）：手牌在正右侧 ========== */
+.player-seat[style*="top: 35%"][style*="left: 5%"] .player-hand,
+.player-seat[style*="top: 30%"][style*="left: 5%"] .player-hand,
+.player-seat[style*="top: 25%"][style*="left: 5%"] .player-hand { 
+    top: 50%;
+    left: 100%;
+    transform: translateY(-50%);
+    margin-left: 8px;
+}
+
+/* ========== 右中位置（靠右）：手牌在左侧 ========== */
+.player-seat[style*="top: 40%"][style*="right: 5%"] .player-hand,
+.player-seat[style*="top: 35%"][style*="right: 5%"] .player-hand { 
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+}
+
+/* ========== 右上位置（靠右）：手牌在左侧 ========== */
+.player-seat[style*="top: 30%"][style*="right: 5%"] .player-hand,
+.player-seat[style*="top: 25%"][style*="right: 5%"] .player-hand { 
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+}
+
+/* ========== 右上(18%/8%)（靠右）：手牌在左侧 ========== */
+.player-seat[style*="top: 18%"][style*="right: 8%"] .player-hand { 
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+}
+
+/* ========== 左上(18%/12%/8%)（靠左）：手牌在正右侧 ========== */
+.player-seat[style*="top: 18%"][style*="left: 8%"] .player-hand,
+.player-seat[style*="top: 12%"][style*="left: 8%"] .player-hand { 
+    top: 50%;
+    left: 100%;
+    transform: translateY(-50%);
+    margin-left: 8px;
 }
 
 /* ===== 下注闪动动画 ===== */

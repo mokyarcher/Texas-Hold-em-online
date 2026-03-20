@@ -137,6 +137,7 @@ const userDB = {
         username, 
         nickname, 
         chips,
+        avatar_filename,
         CASE WHEN id = ? THEN 1 ELSE 0 END as is_current_user
       FROM users 
       ORDER BY chips DESC 

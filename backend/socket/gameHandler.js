@@ -397,7 +397,7 @@ function initSocketHandlers(io) {
     });
 
     // 玩家行动
-    socket.on('player_action', ({ action, amount }) => {
+    socket.on('player_action', async ({ action, amount }) => {
       const { roomId, userId } = socket;
       if (!roomId) {
         socket.emit('error', { message: '不在房间中' });
@@ -422,7 +422,7 @@ function initSocketHandlers(io) {
       }
 
       // 执行玩家行动
-      executePlayerAction(io, roomId, game, playerIndex, action, amount);
+      await executePlayerAction(io, roomId, game, playerIndex, action, amount);
     });
 
     // 离开房间
@@ -590,6 +590,14 @@ function initSocketHandlers(io) {
 
 function shouldAdvanceRound(game) {
   const activePlayers = game.getActivePlayers();
+  
+  // 检查是否只剩人机
+  const realPlayers = activePlayers.filter(p => !p.isBot);
+  if (realPlayers.length === 0 && activePlayers.length > 0) {
+    console.log(`[Game] Only bots left, should end game`);
+    return true;
+  }
+  
   if (activePlayers.length <= 1) return true;
   
   const allActed = activePlayers.every(p => 
@@ -599,8 +607,28 @@ function shouldAdvanceRound(game) {
   return allActed;
 }
 
-function advanceRound(io, roomId, game) {
+async function advanceRound(io, roomId, game) {
   const notFoldedPlayers = game.getNotFoldedPlayers();
+  
+  // 检查是否还有任何玩家在游戏中（包括人机）
+  if (notFoldedPlayers.length === 0) {
+    // 没有任何玩家在游戏中，直接结束游戏并解散房间
+    console.log(`[Game] Room ${roomId} - no players left, ending game and deleting room`);
+    await roomDB.deleteRoom(roomId);
+    activeGames.delete(roomId);
+    
+    io.to(roomId).emit('game_end', {
+      message: '游戏结束，房间已解散',
+      reason: 'no_players'
+    });
+    
+    // 通知所有玩家返回大厅
+    io.to(roomId).emit('room_deleted', {
+      message: '房间已解散'
+    });
+    
+    return;
+  }
   
   // 只剩一个玩家，直接获胜
   if (notFoldedPlayers.length === 1) {
@@ -906,7 +934,7 @@ function handleBotTurn(io, roomId, game) {
 }
 
 // 执行玩家行动（包括人机）
-function executePlayerAction(io, roomId, game, playerIndex, action, amount = 0) {
+async function executePlayerAction(io, roomId, game, playerIndex, action, amount = 0) {
   const player = game.players[playerIndex];
   
   switch (action) {
@@ -983,16 +1011,16 @@ function executePlayerAction(io, roomId, game, playerIndex, action, amount = 0) 
   });
 
   // 检查是否进入下一轮
-  if (shouldAdvanceRound(game)) {
-    advanceRound(io, roomId, game);
-  } else {
-    // 下一个玩家
-    game.currentPlayer = game.findNextActivePlayer(game.currentPlayer);
-    broadcastGameState(io, roomId, game);
-    
-    // 检查下一个玩家是否是人机
-    handleBotTurn(io, roomId, game);
-  }
+    if (shouldAdvanceRound(game)) {
+      await advanceRound(io, roomId, game);
+    } else {
+      // 下一个玩家
+      game.currentPlayer = game.findNextActivePlayer(game.currentPlayer);
+      broadcastGameState(io, roomId, game);
+      
+      // 检查下一个玩家是否是人机
+      handleBotTurn(io, roomId, game);
+    }
 }
 
 module.exports = {
