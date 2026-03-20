@@ -479,17 +479,19 @@ function initSocketHandlers(io) {
         return;
       }
       
+      const player = game.players[playerIndex];
+      
       // 检查玩家是否之前已断开连接，如果是，清理相关定时器
-      const prevSocketId = game.players[playerIndex].socketId;
+      const prevSocketId = player.socketId;
       if (prevSocketId !== socket.id) {
         // 玩家重新连接，清理之前的断开连接定时器
-        if (game.countdownInterval) {
-          clearInterval(game.countdownInterval);
-          game.countdownInterval = null;
+        if (player.countdownInterval) {
+          clearInterval(player.countdownInterval);
+          player.countdownInterval = null;
         }
-        if (game.disconnectTimer) {
-          clearTimeout(game.disconnectTimer);
-          game.disconnectTimer = null;
+        if (player.disconnectTimer) {
+          clearTimeout(player.disconnectTimer);
+          player.disconnectTimer = null;
         }
       }
       
@@ -497,9 +499,9 @@ function initSocketHandlers(io) {
       socket.join(roomId);
       socket.roomId = roomId;
       socket.userId = userId;
-      game.players[playerIndex].socketId = socket.id;
-      game.players[playerIndex].disconnected = false;
-      game.players[playerIndex].disconnectedAt = null;
+      player.socketId = socket.id;
+      player.disconnected = false;
+      player.disconnectedAt = null;
       socketMap.set(socket.id, { roomId, userId });
       
       // 发送当前游戏状态
@@ -564,19 +566,20 @@ function initSocketHandlers(io) {
                     message: `${player.username} 已掉线，等待60秒重连...`
                   });
                   
-                  // 检查是否是当前行动玩家，只有当前玩家才启动60秒倒计时
-                  if (game.currentPlayer === playerIndex && activeGames.has(roomId)) {
-                    console.log(`Current player ${player.username} disconnected, starting 60s timer...`);
-                    // 启动60秒倒计时
-                    game.disconnectTimer = setTimeout(() => {
+                  // 所有掉线玩家都启动60秒倒计时，让他们有机会重连
+                  if (activeGames.has(roomId)) {
+                    console.log(`Player ${player.username} disconnected, starting 60s reconnect timer...`);
+                    
+                    // 为掉线玩家启动60秒倒计时
+                    player.disconnectTimer = setTimeout(() => {
                       handleDisconnectTimeout(io, roomId, game, playerIndex);
                     }, 60000);
                     
                     // 启动倒计时广播（每秒发送一次，持续60秒）
                     let countdown = 60;
-                    game.countdownInterval = setInterval(() => {
+                    player.countdownInterval = setInterval(() => {
                       countdown--;
-                      if (countdown >= 0 && activeGames.has(roomId)) {
+                      if (countdown >= 0 && activeGames.has(roomId) && player.disconnected) {
                         io.to(roomId).emit('player_disconnect_countdown', {
                           userId: userId,
                           username: player.username,
@@ -585,19 +588,24 @@ function initSocketHandlers(io) {
                         
                         if (countdown === 0) {
                           // 倒计时结束，清除定时器
-                          if (game.countdownInterval) {
-                            clearInterval(game.countdownInterval);
-                            game.countdownInterval = null;
+                          if (player.countdownInterval) {
+                            clearInterval(player.countdownInterval);
+                            player.countdownInterval = null;
                           }
                         }
                       } else {
-                        // 游戏已结束或倒计时完成，清除定时器
-                        if (game.countdownInterval) {
-                          clearInterval(game.countdownInterval);
-                          game.countdownInterval = null;
+                        // 游戏已结束或玩家已重连，清除定时器
+                        if (player.countdownInterval) {
+                          clearInterval(player.countdownInterval);
+                          player.countdownInterval = null;
                         }
                       }
                     }, 1000);
+                    
+                    // 如果是当前行动玩家，额外标记游戏需要处理
+                    if (game.currentPlayer === playerIndex) {
+                      console.log(`Current player ${player.username} disconnected, will auto-fold after 60s`);
+                    }
                   }
                 } else {
                   console.log(`Player ${player.username} reconnected within 3s, not marking as disconnected`);
@@ -1033,6 +1041,9 @@ async function autoStartNextGame(io, roomId, game) {
   
   activeGames.set(roomId, newGame);
   
+  // 更新房间状态为游戏中
+  await roomDB.updateRoomStatus(roomId, 'playing');
+  
   // 从 socketMap 恢复 socketId
   socketMap.forEach((info, sockId) => {
     if (info.roomId === roomId) {
@@ -1148,9 +1159,9 @@ function handleDisconnectTimeout(io, roomId, game, playerIndex) {
   if (!player || !player.disconnected) {
     console.log(`Player ${playerIndex} reconnected or not found, cancel timeout`);
     // 如果玩家重新连接，确保清理定时器
-    if (game.countdownInterval) {
-      clearInterval(game.countdownInterval);
-      game.countdownInterval = null;
+    if (player && player.countdownInterval) {
+      clearInterval(player.countdownInterval);
+      player.countdownInterval = null;
     }
     return;
   }
@@ -1158,9 +1169,9 @@ function handleDisconnectTimeout(io, roomId, game, playerIndex) {
   console.log(`Player ${player.username} timeout (60s), auto folding and removing...`);
   
   // 清除相关的定时器
-  if (game.countdownInterval) {
-    clearInterval(game.countdownInterval);
-    game.countdownInterval = null;
+  if (player.countdownInterval) {
+    clearInterval(player.countdownInterval);
+    player.countdownInterval = null;
   }
   
   // 自动弃牌
@@ -1186,6 +1197,9 @@ function handleDisconnectTimeout(io, roomId, game, playerIndex) {
     reason: 'disconnect_timeout',
     message: `${player.username} 因掉线被移出游戏`
   });
+  
+  // 注意：这里不从 room_players 中移除玩家，以便他们可以重连
+  // 只有在游戏结束时才清理不在游戏中的玩家
   
   // 检查是否进入下一轮或结束游戏
   const activePlayers = game.players.filter(p => !p.folded && !p.allIn && !p.eliminated);

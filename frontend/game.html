@@ -355,8 +355,8 @@
             <div class="win-amount" id="winAmount"></div>
             <div id="eliminatedInfo" style="color: #e74c3c; margin: 15px 0; font-size: 0.9rem;"></div>
             <div id="gameOverButtons">
-                <button class="btn btn-primary" onclick="stayInRoom()" id="btnStayInRoom" style="margin-right: 10px; display: none;">留在房间继续</button>
-                <button class="btn btn-secondary" onclick="backToLobby()" id="btnBackToLobby">返回大厅</button>
+                <button class="btn btn-primary" onclick="stayInRoom()" id="btnStayInRoom" style="margin-right: 10px; display: none;">继续游戏</button>
+                <button class="btn btn-secondary" onclick="backToLobby()" id="btnBackToLobby">回到大厅</button>
             </div>
             <div id="waitingInfo" style="color: #ffd700; margin-top: 15px; font-size: 0.9rem; display: none;">
                 等待其他玩家选择...
@@ -539,14 +539,14 @@
                 console.log('Reconnect failed');
                 showReconnectToast('重连失败，请刷新页面');
             });
-            
+
             // 服务端重连响应
             socket.on('reconnect_success', (data) => {
                 console.log('Server reconnect success:', data);
                 updateGameState(data.gameState);
                 showReconnectToast('已恢复到游戏');
             });
-            
+
             socket.on('reconnect_failed', (data) => {
                 console.log('Server reconnect failed:', data);
                 showAlert(data.message || '重连失败', 'error');
@@ -1413,7 +1413,7 @@
             const myChips = myHandInfo ? myHandInfo.chips : 0;
             
             if (myHandInfo && myChips < 100) {
-                // 当前用户筹码不足，只显示返回大厅
+                // 当前用户筹码不足，只显示回到大厅
                 btnStayInRoom.style.display = 'none';
                 btnBackToLobby.style.display = 'inline-block';
                 eliminatedInfo.innerHTML += '<br><br>您的积分不足，无法继续游戏';
@@ -1426,13 +1426,12 @@
                 // 筹码充足（>=1000），显示两个选择
                 btnStayInRoom.style.display = 'inline-block';
                 btnBackToLobby.style.display = 'inline-block';
-                btnBackToLobby.textContent = '回到大厅';
                 eliminatedInfo.innerHTML += `<br><br>您当前有 ${myChips} ⭐，可以选择继续游戏或回到大厅`;
             } else {
-                // 筹码在100-999之间，只能返回大厅
+                // 筹码在100-999之间，只能回到大厅
                 btnStayInRoom.style.display = 'none';
                 btnBackToLobby.style.display = 'inline-block';
-                eliminatedInfo.innerHTML += `<br><br>您当前有 ${myChips} ⭐，积分不足1000无法继续，将返回大厅`;
+                eliminatedInfo.innerHTML += `<br><br>您当前有 ${myChips} ⭐，积分不足1000无法继续，将回到大厅`;
             }
             
             waitingInfo.style.display = 'none';

@@ -1455,7 +1455,7 @@
                             <div style="color: #e74c3c;">游戏中</div>
                             <div style="display: flex; gap: 8px;">
                                 <button class="btn-join" style="background: #27ae60;" onclick="reconnectGame('${room.id}')">
-                                    重连游戏
+                                    重连
                                 </button>
                                 ${isHost ? `<button class="btn-delete" onclick="deleteRoom('${room.id}')">删除</button>` : ''}
                             </div>
@@ -1512,9 +1512,9 @@
             }
         }
 
-        // 重连游戏
+        // 重连
         async function reconnectGame(roomId) {
-            const confirmed = await showConfirm('你有一个正在进行的游戏，是否重连？', '重连游戏');
+            const confirmed = await showConfirm('你有一个正在进行的游戏，是否重连？', '重连');
             if (confirmed) {
                 window.location.href = `game.html?id=${roomId}`;
             }

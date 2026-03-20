@@ -132,4 +132,68 @@
 
 ---
 
-*最后更新: 2026-03-19 11:15*
+### 2026-03-21 - 游戏结束机制大改（多局连续游戏）
+- **操作**: 重构游戏结束后的流程，支持连续多局游戏而无需退出房间
+- **功能**:
+  - 小局结束后，筹码>=1000的玩家可选择留下或离开
+  - 10秒选择时间，未选择则根据筹码自动决定（>=1000留下，<1000离开）
+  - >=2人留下时，5秒倒计时后自动开始下一局
+  - 自动轮换庄家位置（根据游戏计数）
+  - 完全清理旧状态，重新发牌、分配盲注
+- **修改文件**:
+  - `backend/socket/gameHandler.js`: 
+    - 重构 `endGame` 函数
+    - 添加 `handlePlayerChoicesTimeout` 处理超时
+    - 添加 `handlePlayerChoice` 处理玩家选择
+    - 添加 `autoStartNextGame` 自动开始新游戏
+    - 添加 `game_count` 轮换庄家
+  - `backend/db/database.js`: 添加 `game_count` 字段和 `incrementGameCount` 方法
+  - `frontend/game.html`: 
+    - 修改游戏结束弹窗，添加"留在房间继续"按钮
+    - 添加 `resetGameTable` 清理牌桌状态
+    - 添加 `game_restart` 和 `game_started` 事件处理
+- **数据库**: 执行 `ALTER TABLE rooms ADD COLUMN game_count INTEGER DEFAULT 0;`
+- **状态**: ✅ 已完成
+
+### 2026-03-21 - 修复游戏状态bug（hasActed）
+- **操作**: 修复盲注玩家 hasActed 状态未设置导致的游戏卡死问题
+- **问题**: Preflop轮小盲注和大盲注已下注，但 hasActed 为 false，导致无法推进轮次
+- **修复**: 在 `start_game` 中设置盲注时同时设置 `hasActed = true`
+- **修改文件**: `backend/socket/gameHandler.js`
+- **状态**: ✅ 已完成
+
+### 2026-03-21 - 修复socket连接状态问题
+- **操作**: 修复玩家选择留下后 socket 映射问题
+- **修改**:
+  - `join_game` 中更新 `onlineUsers` 的 `socketId`
+  - `disconnect` 事件中检查 socketId 匹配后再删除在线状态
+  - `start_game` 中确保所有玩家 socket 加入房间
+- **修改文件**: `backend/socket/gameHandler.js`
+- **状态**: ✅ 已完成
+
+### 2026-03-21 - 人机思考时间优化
+- **操作**: 增加人机决策的思考延迟，提升真实感
+- **修改**: 思考时间从 1-3秒 调整为 2-5秒
+- **修改文件**: `backend/socket/gameHandler.js` (handleBotTurn)
+- **状态**: ✅ 已完成
+
+### 2026-03-21 - 术语和UI调整
+- **操作**: 根据用户要求调整游戏术语和UI
+- **修改内容**:
+  - "德州扑克" 改为 "贵州扑克"
+  - "富豪" 改为 "积分"
+  - 所有筹码图标改为 "⭐"
+  - 排行榜优化：头像左侧，昵称和状态中间
+  - 已连接状态显示改为绿色，位置移到右上角退出按钮旁边
+  - 字体放大三倍，颜色优化
+  - 添加标语"仅供娱乐 禁止赌博"
+  - 大小盲按钮改为大写英文（SB/BB/D）
+  - 玩家信息框位置调整（靠桌边）
+  - 手牌摆放优化（根据位置左右调整）
+  - 桌位布局优化（2-8人桌合理分配）
+- **修改文件**: `frontend/game.html`, `frontend/room.html`, `frontend/lobby.html`, `frontend/css/`
+- **状态**: ✅ 已完成
+
+---
+
+*最后更新: 2026-03-21*
