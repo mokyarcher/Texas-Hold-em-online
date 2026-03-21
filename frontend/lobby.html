@@ -175,6 +175,21 @@
             box-shadow: 0 5px 20px rgba(243, 156, 18, 0.4);
         }
 
+        .version-info {
+            position: fixed;
+            bottom: 15px;
+            right: 20px;
+            color: rgba(255,255,255,0.4);
+            font-size: 0.75rem;
+            font-family: 'Microsoft YaHei', sans-serif;
+            z-index: 10;
+        }
+
+        .version-info span {
+            color: #ffd700;
+            font-weight: 500;
+        }
+
         .room-list {
             background: rgba(0,0,0,0.2);
             border-radius: 12px;
@@ -2184,6 +2199,8 @@
         setInterval(loadRooms, 5000);
     </script>
     
+    <div class="version-info">版本 <span>v1.5.0</span></div>
+
     <!-- Socket.io 连接（用于在线状态） -->
     <script src="/socket.io/socket.io.js"></script>
     <script>

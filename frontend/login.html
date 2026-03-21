@@ -157,6 +157,24 @@
             font-size: 0.85rem;
         }
 
+        .version-info {
+            position: fixed;
+            bottom: 15px;
+            right: 20px;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.8rem;
+            font-family: 'Microsoft YaHei', sans-serif;
+            z-index: 100;
+            background: rgba(0,0,0,0.3);
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+        .version-info span {
+            color: #ffd700;
+            font-weight: 600;
+        }
+
         .terms-link a {
             color: #ffd700;
             text-decoration: none;
@@ -342,6 +360,8 @@
 
         <button class="btn btn-guest" onclick="guestLogin()">🎮 游客登录</button>
     </div>
+
+    <div class="version-info">版本 <span>v1.5.0</span></div>
 
     <div id="termsModal" class="modal">
         <div class="modal-content">
