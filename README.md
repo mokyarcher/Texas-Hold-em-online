@@ -1,14 +1,14 @@
 # 贵州扑克 | Guizhou Poker
 
-一款基于局域网的德州扑克游戏平台 | A LAN-based Texas Hold'em poker game platform
+一款基于局域网的贵州扑克游戏平台 | A LAN-based Guizhou poker game platform
 
 ***
 
 ## 简介 | Overview
 
-**中文**: 专为朋友聚会设计的网页版德州扑克，支持多人对战和AI机器人，无需安装，浏览器即开即玩。
+**中文**: 专为朋友聚会设计的网页版贵州扑克，支持多人对战和AI机器人，无需安装，浏览器即开即玩。
 
-**English**: A web-based Texas Hold'em poker for friends gathering. Support multiplayer and AI bots. No installation, play instantly in browser.
+**English**: A web-based Guizhou poker for friends gathering. Support multiplayer and AI bots. No installation, play instantly in browser.
 
 ***
 
@@ -16,7 +16,7 @@
 
 | 中文          | English                            |
 | ----------- | ---------------------------------- |
-| 🎮 2-8人德州扑克 | 🎮 2-8 Players Texas Hold'em       |
+| 🎮 2-8人贵州扑克 | 🎮 2-8 Players Guizhou       |
 | 🤖 AI机器人陪玩  | 🤖 AI Bots Support                 |
 | 🔒 密码保护房间   | 🔒 Password Protected Rooms        |
 | 🏆 积分排行榜    | 🏆 Leaderboard                     |
