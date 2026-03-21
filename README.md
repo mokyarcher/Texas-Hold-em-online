@@ -34,7 +34,7 @@ cd backend && npm install
 npm start
 
 # 浏览器访问 | Open browser
-http://localhost:3000
+http://localhost:3000/login.html
 ```
 
 ***
